@@ -1991,6 +1991,50 @@
         "public/docs/assets/agent_transcripts/fline_fill_rule/metadata.edn": "b671b3a4b8f2724133f5568f11d066b9be07168e2c462fe679dbf669e5dcb175"
       }
     },
+    "assets/agent_transcripts/fline_gpu_layers/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-27T13:50:30.982Z",
+      "channels": 1,
+      "file": "assets/web_publications/fline_gpu_layers/document/metadata.edn",
+      "files": {
+        "assets/web_publications/fline_gpu_layers/document/metadata.edn": "0585b11ba38f5ab4c60c0f14753534cc53e50a2e8f4fb3f3a62bce0f5572b7f6",
+        "assets/web_publications/fline_gpu_layers/document/outputs.json": "f2fb39542ac3faf7c48cec1c84744d6d2083661d64bea1f4cbbb18c7bfbf9f5a",
+        "assets/web_publications/fline_gpu_layers/outputs/0.html": "a8ed648419f9d9aa7e676abcfbab9186dc5fa072b4c4a059e6d3e912c8fc3c23"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/fline_gpu_layers/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/fline_gpu_layers.yaml": "1dd787141542d0ff7d4f77d5edf8155e4277e2ab069bc973b88e73ad33ae22b1",
+        "public/docs/afield_four_graphics.md#capture-box=flg_renderer": "f58bf4884e114779d4f7edc7c1478c2fe786cd0dc2b60c9996af4a4ca19022dd",
+        "public/docs/assets/afield_four_graphics/fline-layers-spatial.png": "d5b5990ee7e275df75096c39be1dbe0f4d096420046ba55eebcc3baa41c99d07",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_fills_code_.kt": "7cb84fad480baaa6feef7474a8064126987d5b8966a1f9b8783fc155c963d1de",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_fills_fragment_.glsl": "06158e9779553c8e03d98e1c3ee6f760db208732cee08ea56b9e54f322285c96",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_fills_vertex_.glsl": "1e9afeef2dc05afd15535c74572c995295adfe3b1e1e6e35daf885f4fd21ca71",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_layers_code_.kt": "0eb31fd5eb056a2efa59d8640739359fc80a49b60e123878c0061f7baa79dcb6",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_points_code_.kt": "aaee5c1dcb861a599d3912ac0dd513cc2be90892776870f4506573db04f6a4f0",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_points_fragment_.glsl": "64acd6954b018c1c97f3604caab04c35b859931501396883b5d62ed62a6b900a",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_points_vertex_.glsl": "a4965f067f5e273d037c9e45f0e2ef7f7b7bc61f4601f351bc8c7c8f21712264",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_renderer_code_.kt": "ca6299d039c6b09e5e843846bdb83f4f9a35eafd7b27d84d3902dbc6bc3cb3b2",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_scene_code_.kt": "8fab44648f05301f9ab405defb41076632e699504a4329d175370fb6a84d5d5b",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_stroke_lines_code_.kt": "c74142084cef4232308379f65110405aa62e164ca8c44439925b30895f622597",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_stroke_lines_fragment_.glsl": "06158e9779553c8e03d98e1c3ee6f760db208732cee08ea56b9e54f322285c96",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_stroke_lines_vertex_.glsl": "87ff30eae97280e3806fc0db719f1d885e9b389ade4e2c40c85950b0ca5497c6",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_strokes_code_.kt": "4bc68a38f1098cfb3a62544ea74d722eab057d0345f285c9c00715e511c37a3c",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_strokes_fragment_.glsl": "bb8aaf7551509978bd6b225ffc6a1233f6c64ae4d4c26f9410807867abdc7a9a",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_strokes_joined_code_.kt": "0946d853317976286cb4e836e1bc1cd1105a9095a9ab1bc5792cffb062d4b466",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_strokes_joined_fragment_.glsl": "1547881931cd90ecfd5c5267dd51e50eb0bceceaca228d3106925b2bc6442daa",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_strokes_joined_vertex_.glsl": "ab32994d61318ba1cef34a0c0204623632a98619f589d9c7409f8202dd9f878f",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/flg_strokes_vertex_.glsl": "44063a363104ecc8851efa66beaba4bec0b3c9e8cd901c26a248758fc4e751a6",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/guides/spatial_rules.md": "2804cca34f3d47fa429b8f67faafb82344a399747b2f4a40ab2899df47359bff",
+        "public/docs/assets/agent_transcripts/fline_gpu_layers/metadata.edn": "4ee5133b61860b16afc9a79e7ca18f61332c285a65310b4d32b50c2bbc35e861"
+      },
+      "supplementalSources": [
+        "public/docs/afield_four_graphics.md#capture-box=flg_renderer",
+        "public/docs/assets/afield_four_graphics/fline-layers-spatial.png"
+      ]
+    },
     "assets/agent_transcripts/fline_hit_records/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T15:02:40.198Z",
@@ -2810,29 +2854,58 @@
         "public/docs/assets/agent_transcripts/kirigami_choi/metadata.edn": "e369305bd56bcce021235a36a07e799a6c117ef6ccb3dca44b4dc3b09a42f9b6"
       }
     },
+    "assets/agent_transcripts/kirigami_popup/metadata.edn": {
+      "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
+      "capturedAt": "2026-11-27T12:57:46.602Z",
+      "channels": 1,
+      "file": "assets/web_publications/kirigami_popup/document/metadata.edn",
+      "files": {
+        "assets/web_publications/kirigami_popup/document/metadata.edn": "8fad3e407f9bad82d93eeeac64a8cd6039935839fd0319fd132d5f13df759825",
+        "assets/web_publications/kirigami_popup/document/outputs.json": "f545b668b0713f03e497609ee942e09ac9a87944d0ebfb8aa36fa4a5f5c32a44",
+        "assets/web_publications/kirigami_popup/outputs/0.html": "7dae5a3021b32b32d599538e016e7c20d08e3b0c8e0dfcdd50c138f0665cbb55"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/kirigami_popup/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/kirigami_popup.yaml": "e860875a66abb1b050c7be5686b0e0b85106aa9e7aae6e6208b74948e56c227e",
+        "public/docs/assets/agent_transcripts/kirigami_popup/guides/chain_kirigami_solid.md": "42c10d2258935ab0db462dafe6d6bcda6e95448461be180cbfae1d2a8597f1e7",
+        "public/docs/assets/agent_transcripts/kirigami_popup/kirigami_popup_renderer_code_.kt": "5984f57e373dab8121f2d18cf9a76a30452db2e23cc9ace4820d082b0ae5bb9e",
+        "public/docs/assets/agent_transcripts/kirigami_popup/kirigami_popup_sweep_code_.kt": "50cdec6fc1914fb3324f3fc8117327e0ff5160654bc4ea88973bc97b25356bed",
+        "public/docs/assets/agent_transcripts/kirigami_popup/kirigami_popup_trace_code_.kt": "2dc9b2eba199c1991b0518637372e0b9a1895661e1d9da989c60016a23acbf52",
+        "public/docs/assets/agent_transcripts/kirigami_popup/metadata.edn": "8c36bf4954f98316e73d3faf35cf46ad83f063bbf08a62dafe0fdd69c26bc4a7",
+        "public/docs/assets/chain_kirigami_solid/popup_traced.png": "e8ef00314da8c629aec954efa72af90dfd33c8a0c5679418d674caacab8d26eb",
+        "public/docs/chain_kirigami_solid.md#capture-box=kirigami_popup_trace": "e444929f18f004e14d65dfd0bc44946078aa585aa230bda899cddc44c02b3078"
+      },
+      "supplementalSources": [
+        "public/docs/assets/chain_kirigami_solid/popup_traced.png",
+        "public/docs/chain_kirigami_solid.md#capture-box=kirigami_popup_trace"
+      ]
+    },
     "assets/agent_transcripts/kirigami_solid_chain/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-27T10:00:58.237Z",
+      "capturedAt": "2026-11-27T12:05:56.926Z",
       "channels": 5,
       "file": "assets/web_publications/kirigami_solid_chain/document/metadata.edn",
       "files": {
-        "assets/web_publications/kirigami_solid_chain/document/metadata.edn": "dd001b6abe319c1e8135a590a27073f7b5b248c84f4e13f9f0ded7a01ef36ac2",
-        "assets/web_publications/kirigami_solid_chain/document/outputs.json": "3ea652a2fdd41475b667bf60a06e18d862112d00b78b5a512eba331e72d28d47",
-        "assets/web_publications/kirigami_solid_chain/outputs/0.html": "3d33d7a075728c22c5d6e69b8a94f08be4b190a84047cb65a96c9a59ca9f8bef",
-        "assets/web_publications/kirigami_solid_chain/outputs/1.html": "06f329f3f6ca6b65a74ad6aae980a432d7248118b1e8f6f474fc380ebb37d6f4",
-        "assets/web_publications/kirigami_solid_chain/outputs/2.html": "8aa73ee68b311bcf7370ae43f99cc74bf3281ae679c419bbcb2698ea0484ef7d",
-        "assets/web_publications/kirigami_solid_chain/outputs/3.html": "753cfbcf2ab327856e88c5a13dcb187b9008e60c4c4b7ea06f4b8c7a79d10419",
-        "assets/web_publications/kirigami_solid_chain/outputs/4.html": "4dcd5ec9dd1ac302aa5ad0c79c641ccc64e66c27a0b50bd91e3b0364e5b42025"
+        "assets/web_publications/kirigami_solid_chain/document/metadata.edn": "1cbb008838024f20f60c8ecb6ff45f9c14f2ff39362836276aaa381f166a112d",
+        "assets/web_publications/kirigami_solid_chain/document/outputs.json": "ce8ce3a6eb086daa778bbe25b324eeba551a2b182b2b8d576fdf31badf85a86c",
+        "assets/web_publications/kirigami_solid_chain/outputs/0.html": "d0cfb2f09caea72b2c8e4bbe2f168cdd1e77ba2a12f7be74039d9dfaf0873a00",
+        "assets/web_publications/kirigami_solid_chain/outputs/1.html": "9628f828ba1d44d05b62e427e0984f8c25f5ba586014f30de68690998b24a722",
+        "assets/web_publications/kirigami_solid_chain/outputs/2.html": "f8140361df0fcb73fa2de1bd3da714c41ab1b65cf0c618a8147d5b8c01636c66",
+        "assets/web_publications/kirigami_solid_chain/outputs/3.html": "74c07de6239bcc93fae1075b21fc5a4e520ad248c07f408377b1f979f0457a72",
+        "assets/web_publications/kirigami_solid_chain/outputs/4.html": "a84360cd6e31c06db3eb9ebfc9579f53e8e2a959e89c50db6afc006eaccac1ae"
       },
       "kinds": [],
       "outputs": "assets/web_publications/kirigami_solid_chain/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/kirigami_solid_chain.yaml": "ec090bd2e43509d7c2a97da690e6e31f9980a593f4489db029019397903bfcfc",
+        "dev_docs/agents/transcripts/kirigami_solid_chain.yaml": "6cff93985e0e550ce9c040439ad747a6fb067ca4583f616f8e980f9b62ba10e4",
         "public/docs/assets/agent_transcripts/kirigami_solid_chain/guides/chain_kirigami_solid.md": "3df059a824072976d2e0c97c23c27f7d1cf010abc002432a731f6a6ee928b413",
-        "public/docs/assets/agent_transcripts/kirigami_solid_chain/kirigami_circle_solid_code_.kt": "d91f18f2f889718411813d0375e36a9f48e5b7d7173b1715a8f3c1967b4da526",
-        "public/docs/assets/agent_transcripts/kirigami_solid_chain/kirigami_cut_plate_code_.kt": "1da7757af41c4bf1a20fff1c7ae215e0cdbbcdf33de17345bcf33d349f27132b",
-        "public/docs/assets/agent_transcripts/kirigami_solid_chain/kirigami_deployed_code_.kt": "24ef0aca55216979bbe8e748c7119bc1ddc222002c57bb62ebc00ae24fec614d",
-        "public/docs/assets/agent_transcripts/kirigami_solid_chain/metadata.edn": "a7f48993ad66328700a5548746c971c7627d4f31096de5b700fa5c6abed0db74"
+        "public/docs/assets/agent_transcripts/kirigami_solid_chain/kirigami_circle_solid_code_.kt": "6b989d27ebb8e356ce1729d8ea07e34349755dbad7fea37e8a7f260ced3b7b27",
+        "public/docs/assets/agent_transcripts/kirigami_solid_chain/kirigami_cut_plate_code_.kt": "acc050418216473fe713fd4a6327497826dcfa652229e9563b9b4167cbc43fae",
+        "public/docs/assets/agent_transcripts/kirigami_solid_chain/kirigami_deployed_code_.kt": "b8724a65e2337f2bb9cb750719f1007a5c4788bef2c804f64d6fa8de002afdc8",
+        "public/docs/assets/agent_transcripts/kirigami_solid_chain/metadata.edn": "71fe9239b70f62cfebbd8906a348d77b80eb2388a4b39382220ccbd515f576aa"
       }
     },
     "assets/agent_transcripts/kmeans_emeans/metadata.edn": {
@@ -5714,29 +5787,29 @@
     },
     "assets/agent_transcripts/spatial_rules_tour/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-26T22:53:32.423Z",
+      "capturedAt": "2026-11-27T11:45:14.122Z",
       "channels": 4,
       "file": "assets/web_publications/spatial_rules_tour/document/metadata.edn",
       "files": {
-        "assets/web_publications/spatial_rules_tour/document/metadata.edn": "c7c76d8e29c9eb7d55ae69971c5a5608ab524399fadaaadb9c0a1ed8cad993d1",
-        "assets/web_publications/spatial_rules_tour/document/outputs.json": "04f6308019d4bec68fe33956786bf5acf103804fb2cef4857543373d66a53b04",
-        "assets/web_publications/spatial_rules_tour/outputs/0.html": "50827567d8b407a59f88e2c417c7cbff3ea309cb4b03af942639e3a9043aadd8",
-        "assets/web_publications/spatial_rules_tour/outputs/1.html": "8df6e9ffd235012b26c690f5222d258505a48178c8ed5e4a5daa972a5b01d4d5",
-        "assets/web_publications/spatial_rules_tour/outputs/2.html": "52f66756bfb8eef61f7bd63150a8f26aaf4a814a528f1ca12c90c72518d9cc36",
-        "assets/web_publications/spatial_rules_tour/outputs/3.html": "78c6240da4442d669ae4b350ff27e99b3849cf3cd5887cd38c3fef1c382a4c1b"
+        "assets/web_publications/spatial_rules_tour/document/metadata.edn": "a7618d839cfbd8a9a37ae3cd778016232603f44b8a10839f7877cc6fb8a288a7",
+        "assets/web_publications/spatial_rules_tour/document/outputs.json": "688756ec3da514f651909809c8be7dd207c4ed0d39f3286896d326f13b2d8615",
+        "assets/web_publications/spatial_rules_tour/outputs/0.html": "0a6b8f175084d04e0fa7df48882573301679eb8f8c1cd59fffee41d3ed74397e",
+        "assets/web_publications/spatial_rules_tour/outputs/1.html": "721ca4180c2fcc1278d306b7d4c62c07fe0520841e49a2e56feaae1bead6a494",
+        "assets/web_publications/spatial_rules_tour/outputs/2.html": "179d393d566376faa37bd52c7bfa6373c053c3952ac2d53e142e7d3df6c751ba",
+        "assets/web_publications/spatial_rules_tour/outputs/3.html": "465969e53dd01dc8559e7b3280e7f1a5b2c5dddd1d35da02fe259418b726c61a"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/spatial_rules_tour/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/spatial_rules_tour.yaml": "c3efd2657c1cb98e21b4f618e0085458324b660671c74bd50987a57d46362f00",
+        "dev_docs/agents/transcripts/spatial_rules_tour.yaml": "0783631dc08f50fddba2b90ae9c893a79630ca0907f26ed343798f8f70aa93e9",
         "public/docs/assets/agent_transcripts/spatial_rules_tour/guides/spatial_rules.md": "ae738cf7e5dd7f084b228ef8a2615ae3f7bc94a4d599e4c942bdf276cce5cc2a",
-        "public/docs/assets/agent_transcripts/spatial_rules_tour/metadata.edn": "2ebba1e3997a07b07f7d585fa4458522c057c0182ad854bc9eb235edae20ec1d",
-        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_filament_code_.kt": "080abf46264c1ff0706f28ba05f8f49f7031d9b1671d83aad1655819675fdc12",
+        "public/docs/assets/agent_transcripts/spatial_rules_tour/metadata.edn": "dd8e7fb0ac0a86d5692416c271f331935af9edf3be8e294091d68618b78211b8",
+        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_filament_code_.kt": "44cb3b51ae110e7b5307305fe39296611b3773398109e04ae21b6509b9d93cbf",
         "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_loom_code_.kt": "665b0e2692ce16b51ec05c8106d043e47712e93a8171b24448c8f7aa3f8542cf",
-        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_torus_code_.kt": "0c1bbd6a977d42828dbb4b630d1b0ab60263f9bd607e6cd2c471135788038412",
-        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_tour_code_.kt": "57ac629297e9ab0bc5258daedac8f7eb1931154b9c778f5309a3813faaa0faae"
+        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_torus_code_.kt": "96b32923566ab04e4b9b3317bdb03c1cc68df74fc2e622f873d37ab388c76619",
+        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_tour_code_.kt": "2efe9de2dc4cbb785b21bdec5fd55f57842370b54d458b88306e537c8f353b17"
       }
     },
     "assets/agent_transcripts/spatial_rules_web/metadata.edn": {

@@ -1069,6 +1069,7 @@ source rather than wandering forever.
 import afield.data.graph.SpatialLifetime.MATCH
 import afield.data.graph.inspectOnClick
 
+val fadeSeconds = 0.7
 val world = SpatialRuleWorld()
 val ink = Vec4(0.8f, 0.92f, 1f, 1f)
 
@@ -1120,8 +1121,8 @@ world.rules("filaments") {
         }
 
         val released = now
-        while (now - released < 0.7) {
-            draw(stroke(ends, opacity = 1.0 - (now - released) / 0.7))
+        while (now - released < fadeSeconds) {
+            draw(stroke(ends, opacity = 1.0 - (now - released) / fadeSeconds))
             nextFrame()
         }
     }
@@ -1445,6 +1446,8 @@ import afield.data.graph.SpatialLifetime.MATCH
 
 val rings = 50
 val samples = 20
+val joinRadius = 19.0
+val releaseRadius = 23.0 // A wider release radius keeps existing threads from flickering.
 val world = SpatialRuleWorld(parallelSearch = true)
 val filamentInk = vec(0.43, 0.83, 1.0, 0.66)
 val bandInk = vec(1.0, 0.66, 0.29, 0.64)
@@ -1494,7 +1497,7 @@ world.source("a thousand moving points") {
 }
 
 world.rules("surface links") {
-    val nearby = points("sample").pairsWithin(19.0, leave = 23.0)
+    val nearby = points("sample").pairsWithin(joinRadius, leave = releaseRadius)
     onEnter("thread nearby samples", nearby) { (a, b) ->
         edge("thread", a, b, lifetime = MATCH)
         val ink = if (a["band"] == b["band"]) filamentInk else bandInk
@@ -1506,7 +1509,7 @@ world.rules("surface links") {
             end3 = b.pos
             val t = now - start
             val alpha = ((now - born) / 0.33).coerceIn(0.0, 1.0)
-            val width = 0.65 + 0.9 * (1 - start3.distance(end3) / 23.0).coerceIn(0.0, 1.0)
+            val width = 0.65 + 0.9 * (1 - start3.distance(end3) / releaseRadius).coerceIn(0.0, 1.0)
             draw(spatialStroke([project(start3, t), project(end3, t)], ink, width, alpha))
             nextFrame()
         }
@@ -2023,8 +2026,8 @@ play(world, w = w, h = h, after = { markdown("Tree", "$here seeds, $standing bra
 
 Fourteen posts lean and slide along the ground. Each is an edge from a foot to a head, drawn as a
 spindle skinned onto it. The spindle is drawn once, in a bind pose, lying between two bind
-points, (0, 0) and (200, 0). A `SkinnedLine` made from it poses it between the edge's ends each
-frame: it turns the spindle the shortest way from the bind direction to the edge's, stretches it
+points, (0, 0) and (200, 0). Each post makes its own [`SkinnedLine`](reference/graphics.md#flineskin-kt-skinnedline). On every frame,
+[`pose`](reference/graphics.md#flineskin-kt--skinnedline--pose) turns the spindle the shortest way from the bind direction to the edge's, stretches it
 along the edge by whatever it takes to reach both ends, and moves it into place. Across the edge
 it stretches less: with `across = 0.5` its width grows by the square root of its stretch along,
 so a post thins a little as it lengthens and fattens as it shortens.

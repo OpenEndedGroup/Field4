@@ -21,7 +21,7 @@ val show = slideShow {
             ## 1 · One filament
             Launch this box. Watch the two tips separate, then watch them disappear while still close. The filament remembers its last positions and fades in both cases.
 
-            Click the filament while it fades to see which tips are still present and what kept the line alive. Try a two-second fade in the second `while` loop, then relaunch.
+            Click the filament while it fades to see which tips are still present and what kept the line alive. Set `fadeSeconds` to 2.0, then relaunch.
 
             Stop this box before you continue. [[back]] [[next:Build a loom →]]""".trimIndent(),
         )
@@ -47,7 +47,7 @@ val show = slideShow {
             ## 3 · A thousand moving points
             Launch the torus. Cyan threads join samples in one ring. Amber threads join different rings. Watch the dense bands travel as the tube breathes and check the live edge count below it.
 
-            Try changing the join radius from 19 to 16 units. Relaunch and compare which threads survive.
+            Try changing `joinRadius` from 19 to 16 units. Relaunch and compare which threads survive.
 
             [[home:Start again]] [[finish]]""".trimIndent(),
         )

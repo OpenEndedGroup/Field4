@@ -6,7 +6,8 @@ How different are two leaves? One answer: bend one onto the other, and measure h
 had to distort it. This talk builds that idea from nothing: maps that keep angles, maps that turn
 small circles into ellipses, the map that distorts least, and the distance between shapes it gives.
 
-After the work of Gary P. T. Choi, L. Mahadevan, Lok Ming Lui and co-authors. Words and figures made in Field.
+The talk follows work by Gary P. T. Choi, L. Mahadevan, Lok Ming Lui and co-authors. Its words
+and figures were made in Field.
 
 [Open →](offline.html?file=assets/agent_transcripts/explainer_teichmuller/metadata.edn)
 
@@ -14,9 +15,9 @@ Follow the talk figure by figure on this page. Each figure is a box in the docum
 code and what it draws, with the slide that uses it in the margin. **Open →** shows the whole
 document beside the page; **Open in Field·4** imports an editable copy. To give the talk, run its
 `deck` box in Field's desktop app. [Live figures beside prose](presentation_studio.md#live-figures-beside-prose)
-shows how to build a deck like this one. The computation is in
-[`afield.geometry.conformal`](reference/index.md): the Beltrami coefficient of a map on a triangle
-mesh, the linear Beltrami solver, the quasi-conformal iteration, and maps onto rectangles.
+shows how to build a deck like this one. The [conformal geometry reference](reference/math.md#beltrami-kt) covers the
+Beltrami coefficient of a map on a triangle mesh, the linear solver, the quasi-conformal
+iteration, and maps onto rectangles.
 
 ## Maps that keep angles
 
@@ -28,8 +29,8 @@ A map moves every point of the plane somewhere else. The map z + a·z² bends th
 two grid lines cross they still cross at a right angle, and each small circle comes out as a circle,
 grown or shrunk and turned. A map that keeps every angle is **conformal**.
 
-The figure pushes a grid of small circles through one of three maps and colours each by how far it
-is from a circle. Choose the map with **map**, and how strongly it acts with **amount**.
+Push a grid of small circles through one of three maps. Each is coloured by how far it ends up
+from a circle. Choose the map with **map**, and how strongly it acts with **amount**.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_teichmuller/circles.png" execution="launch" wait-output=true wait="2" timeout="300" embed=true name="explainer-teichmuller-circles" alt="A grid of small circles bent by the map z plus a times z squared: the grid lines curve but still cross at right angles, and every circle is still round and blue, with map and amount sliders"}
 :::fold imports
@@ -224,9 +225,9 @@ the map.
 </figure>
 
 On a computer the plane is a mesh of triangles and a map moves each vertex. Given μ on every
-triangle, the **linear Beltrami solver** finds the map: each coordinate solves one sparse linear
-system. In the figure the square's edges are held and one point inside, white, is dragged to the
-orange dot. The left map asks for μ = 0, as conformal as it can be.
+triangle, [`LinearBeltramiSolver.solve`](reference/math.md#beltrami-kt--linearbeltramisolver--solve) finds the map. Each coordinate solves one sparse linear system. In the figure the square's edges are held and one point inside, white, is dragged to the
+orange dot. [`harmonicMap`](reference/math.md#beltrami-kt--harmonicmap) asks for μ = 0 on the left.
+On the right, [`teichmullerMap`](reference/math.md#beltrami-kt--teichmullermap) iterates to spread the distortion evenly.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_teichmuller/landmark.png" execution="launch" wait-output=true wait="3" timeout="300" embed=true name="explainer-teichmuller-landmark" alt="Two squares of triangles: on the left the harmonic map, blue with an orange and white knot of folded triangles round the dragged point; on the right the Teichmüller map, one even orange, with landmark x and y sliders"}
 :::fold imports
@@ -353,7 +354,7 @@ Choi and Mahadevan compare planar shapes this way: leaves, insect wings, the out
 Mark matching landmarks, let the outline slide between them, and find the Teichmüller map. Here the
 landmarks are the tip, the base, and the margin a third and two thirds of the way up.
 
-Our leaves are mirror-symmetric, and that makes the map exact. The best map is then symmetric too,
+These leaves are mirror-symmetric, which lets us find the map exactly. The best map is symmetric too,
 so it carries the midrib to the midrib, and each half-leaf, with its base, two margin landmarks and
 tip, is a four-cornered region. Any such region maps conformally onto exactly one shape of
 rectangle, and between two rectangles with their corners matched the least distorting map is a
@@ -517,3 +518,8 @@ See also: [Sound](explainer_sound.md), [Cameras and Lenses](explainer_cameras.md
 
 - [Explainers](chains.md#explainers): all the talks.
 - [Presenting with Field](presentation_studio.md): give this talk, or build your own.
+- [Kirigami: cut patterns that open into a shape](kirigami.md): Choi's inverse kirigami design, the
+  other half of `afield.geometry.conformal`, and [A Kirigami Sheet, Cut and Counted](chain_kirigami_solid.md),
+  which turns its sheets into solids.
+- [Spectral geometry](spectral_geometry.md): the cotangent Laplacian, which is the linear Beltrami
+  solver's matrix when μ = 0.

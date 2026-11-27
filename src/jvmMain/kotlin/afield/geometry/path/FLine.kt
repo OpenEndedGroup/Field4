@@ -203,6 +203,7 @@ internal fun FLine.planePoint(x: Number, y: Number, z: Number = 0): Vec3 {
  * | `filled` | `Boolean`, `false` | flood closed subpaths with `color` |
  * | `pointed` | `Boolean`, `false` | draw a dot at every node |
  * | `pointSize` | `Double`, `1.0` | dot size; `Node.pointSize` overrides it per node |
+ * | `fillHint` | `FillHint`, `HOLES` | how `FLineLayers` tessellates the fill: `HOLES` (full), `NO_HOLES` (each subpath alone), `STAR` (a fan per subpath, no tessellator); declared in `FLineLayers.kt` |
  * | `thicken` | `Stroke?`, unset | an AWT stroke (dashes, tapers); only the Java2D shape path honours it, so for dashes on screen use `byDashing` |
  *
  * `Node.color` sets one node's colour, for gradients. A box draws lines with `lines(listOf(a, b), w = 400.0, h = 300.0)`.

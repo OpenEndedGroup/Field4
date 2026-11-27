@@ -64,7 +64,8 @@ object KirigamiSolidChain {
         return out
     }
 
-    private fun cornerNodes(i: Int, j: Int) = listOf(i to j, i + 1 to j, i + 1 to j + 1, i to j + 1)
+    /** Tile `(i, j)`'s four corners as grid nodes, counter-clockwise from bottom-left. */
+    fun cornerNodes(i: Int, j: Int) = listOf(i to j, i + 1 to j, i + 1 to j + 1, i to j + 1)
 
     /**
      * Corner positions of every unit tile at opening angle [angle] (radians), keyed by grid node,
@@ -140,25 +141,30 @@ object KirigamiSolidChain {
     fun bridgedSection(tiles: List<List<DoubleArray>>, bridges: List<Bridge>, gap: Double = 0.04, bridge: Double = 0.12): Section {
         val insets = tiles.map { inset(it, gap) }
         val parts = insets.map { t -> Section.ofDoublePolygon(t.map { it[0] to it[1] }, FillRule.NON_ZERO) }.toMutableList()
-        for (b in bridges) {
-            val ends = listOf(Triple(b.tileA, b.hingeA, b.endA), Triple(b.tileB, b.hingeB, b.endB)).map { (k, h, e) ->
-                val p = insets[k][h]
-                val q = insets[k][e]
-                val len = hypot(q[0] - p[0], q[1] - p[1])
-                val ux = (q[0] - p[0]) / len
-                val uy = (q[1] - p[1]) / len
-                // Start a little inside the tile so the bar overlaps it rather than touching an edge.
-                val c = doubleArrayOf(insets[k].sumOf { it[0] } / insets[k].size, insets[k].sumOf { it[1] } / insets[k].size)
-                val cl = hypot(c[0] - p[0], c[1] - p[1])
-                val ex = (c[0] - p[0]) / cl * gap * 0.5
-                val ey = (c[1] - p[1]) / cl * gap * 0.5
-                listOf((p[0] + ex) to (p[1] + ey), (p[0] + ex + ux * bridge) to (p[1] + ey + uy * bridge))
-            }
-            // Walk A's end out and B's end back, so the quad is simple; NON_ZERO fills it either way round.
-            val quad = listOf(ends[0][0], ends[0][1], ends[1][1], ends[1][0])
-            parts += Section.ofDoublePolygon(quad, FillRule.NON_ZERO).hull()
-        }
+        for (b in bridges) parts += Section.ofDoublePolygon(bridgeBar(insets, b, gap, bridge), FillRule.NON_ZERO).hull()
         return Section.union(parts)
+    }
+
+    /**
+     * The bar of material across one [Bridge]'s slit, as four points: two on tile `tileA`'s side
+     * (hinge end first) then two on tile `tileB`'s (far end first), so the quad is simple. [insets] are
+     * the tiles already shrunk by [gap]; each bar starts a little inside its tile so it overlaps the
+     * tile rather than touching an edge, and reaches [bridge] along the cut.
+     */
+    fun bridgeBar(insets: List<List<DoubleArray>>, b: Bridge, gap: Double, bridge: Double): List<Pair<Double, Double>> {
+        val ends = listOf(Triple(b.tileA, b.hingeA, b.endA), Triple(b.tileB, b.hingeB, b.endB)).map { (k, h, e) ->
+            val p = insets[k][h]
+            val q = insets[k][e]
+            val len = hypot(q[0] - p[0], q[1] - p[1])
+            val ux = (q[0] - p[0]) / len
+            val uy = (q[1] - p[1]) / len
+            val c = doubleArrayOf(insets[k].sumOf { it[0] } / insets[k].size, insets[k].sumOf { it[1] } / insets[k].size)
+            val cl = hypot(c[0] - p[0], c[1] - p[1])
+            val ex = (c[0] - p[0]) / cl * gap * 0.5
+            val ey = (c[1] - p[1]) / cl * gap * 0.5
+            listOf((p[0] + ex) to (p[1] + ey), (p[0] + ex + ux * bridge) to (p[1] + ey + uy * bridge))
+        }
+        return listOf(ends[0][0], ends[0][1], ends[1][1], ends[1][0])
     }
 
     /** The rotating-squares region at opening [angle] (radians): [bridgedSection] over [deploy]. */

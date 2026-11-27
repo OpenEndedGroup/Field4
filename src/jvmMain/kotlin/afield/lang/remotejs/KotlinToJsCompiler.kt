@@ -149,6 +149,21 @@ object KotlinToJsCompiler {
             )
     }
 
+    /**
+     * The fork-matched Kotlin/JS DOM API klib (`kotlinx.browser`, `org.w3c.dom`), which Kotlin 2
+     * keeps out of the stdlib. Built from the same fork tree as the stdlib klib
+     * (`:kotlin-dom-api-compat:jsJar`). Optional: without it a box reaches the DOM through `js(...)`.
+     */
+    private val domApiKlib: File? by lazy {
+        val name = "kotlin-dom-api-compat-js-$FORK_VERSION.klib"
+        listOf(File("libs/$name"), File(System.getProperty("user.dir"), "libs/$name")).firstOrNull { it.exists() }
+    }
+
+    /** What every compile links against: the stdlib, and the DOM API when it is vendored. */
+    private val linkLibraries: String by lazy {
+        listOfNotNull(stdlibJsKlib, domApiKlib).joinToString(File.pathSeparator) { it.absolutePath }
+    }
+
     private fun locateVendoredKlib(): File? {
         val name = "kotlin-stdlib-js-$FORK_VERSION.klib"
         return listOf(File("libs/$name"), File(System.getProperty("user.dir"), "libs/$name"))
@@ -450,7 +465,7 @@ object KotlinToJsCompiler {
         val collector = CollectingMessageCollector()
 
         val phase1 = K2JSCompilerArguments().apply {
-            libraries = stdlibJsKlib.absolutePath
+            libraries = linkLibraries
             outputDir = klibDir.absolutePath
             this.moduleName = moduleName
             freeArgs = listOf(src.absolutePath)
@@ -463,7 +478,7 @@ object KotlinToJsCompiler {
         val phase2 = K2JSCompilerArguments().apply {
             irProduceJs = true
             includes = klib.absolutePath
-            libraries = stdlibJsKlib.absolutePath
+            libraries = linkLibraries
             outputDir = jsDir.absolutePath
             this.moduleName = moduleName
             irModuleName = moduleName
@@ -570,7 +585,7 @@ object KotlinToJsCompiler {
         val log1 = runCompiler(
             javaBin, classpath,
             "-Xir-produce-klib-file",
-            "-libraries", stdlibJsKlib.absolutePath,
+            "-libraries", linkLibraries,
             "-ir-output-dir", klibDir.absolutePath,
             "-ir-output-name", moduleName,
             src.absolutePath,
@@ -588,7 +603,7 @@ object KotlinToJsCompiler {
             javaBin, classpath,
             "-Xir-produce-js",
             "-Xinclude=${klib.absolutePath}",
-            "-libraries", stdlibJsKlib.absolutePath,
+            "-libraries", linkLibraries,
             "-ir-output-dir", jsDir.absolutePath,
             "-ir-output-name", moduleName,
             "-Xir-module-name=$moduleName",

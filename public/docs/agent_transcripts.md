@@ -586,7 +586,7 @@ and plots the wave's heard transposition against the meetings. Redraw a stroke w
 its name, and run the boxes after `strokes` again. See
 [Playheads along strokes](chain_drawn_score.md#playheads-along-strokes).
 
-![A frame labelled 'anima' holding three crossing strokes, a blue wave, a red rising line and a green arc, with an orange circle at each place two playheads met, beside the box's list of the eight meetings](assets/chain_drawn_score/playheads.png)
+![Three crossing strokes, a blue wave, an orange rise and a green arc, with orange circles where two playheads met, beside a list of eight meetings by beat](assets/chain_drawn_score/playheads.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/stroke_playheads/metadata.edn)
 
@@ -4502,6 +4502,18 @@ difference.
 
 [Open →](offline.html?file=assets/agent_transcripts/gezira_gpu_tiger/metadata.edn)
 
+### fline_gpu_layers
+
+**A changing list of FLines on the GPU.** [A changing list of FLines](afield_four_graphics.md#fline-layers)
+as boxes: a renderer; "FLine layers", which owns an `FLineLayers` and a `Camera` and uploads the list
+once a frame, re-packing only lines whose content changed; "strokes", "fills" and "points", each a
+`moduleHere` pipeline with its shaders in its own properties, drawing one layer in one draw; two
+alternative stroke boxes, "stroke lines" (hardware lines) and "strokes, joined" (each run
+antialiased as one shape), which replace "strokes" by name when launched; and a spatial rules world
+whose drawing becomes the list every frame.
+
+[Open →](offline.html?file=assets/agent_transcripts/fline_gpu_layers/metadata.edn)
+
 ### gpu_state
 
 A stateful GPU simulation: 40,000 particles whose positions and velocities live in a
@@ -5299,6 +5311,23 @@ has to equal the sheet's 169 quads, which the box checks and says in words. See
 [the walkthrough](chain_physics_render.md).
 
 [Open →](offline.html?file=assets/agent_transcripts/physics_manifold_path_trace/metadata.edn)
+
+### kirigami_popup
+
+**A kirigami sheet stretched until it pops up**, the last section of
+[A Kirigami Sheet, Cut and Counted](chain_kirigami_solid.md#stretched-until-it-pops-up). The cut
+plate of [kirigami_solid_chain](#kirigami_solid_chain) becomes rigid tiles joined by ligaments that
+fold and twist far more easily than they bend in the plane. *Tilt and stress against stretch* pulls
+sheets 0.06, 0.08 and 0.12 thick to 4% and charts the mean tile tilt, flat until a threshold of
+0.31%, 0.51% and 1.04%, and the stress, which softens at the same strains. *The popped sheet, path
+traced* stretches the 0.06 sheet from flat to 6% under the path tracer; drag its `stretch (%)`
+slider to buckle it to any strain.
+
+- Stretching and measuring the sheet:
+  [`KirigamiPopUp`](reference/examples.md#kirigamipopup-kt-kirigamipopup); the solver:
+  [`HingedPlates`](reference/simulation.md#hingedplates-kt-hingedplates).
+
+[Open →](offline.html?file=assets/agent_transcripts/kirigami_popup/metadata.edn)
 
 ### pattern_particles
 

@@ -1,9 +1,10 @@
 import afield.examples.chain.KirigamiSolidChain
-import kotlin.math.cos
-import kotlin.math.sin
 
+val anglesDegrees: List<Double> = [0.0, 15.0, 30.0, 45.0]
 val closed = KirigamiSolidChain.measure(angle = 0.0)
-val stages = listOf(0.0, 15.0, 30.0, 45.0).map { it to KirigamiSolidChain.measure(angle = Math.toRadians(it)) }
+val stages = anglesDegrees.map { degrees ->
+    degrees to KirigamiSolidChain.measure(angle = Math.toRadians(degrees))
+}
 for ((deg, m) in stages) {
     val s = cos(m.angle) + sin(m.angle)
     println(

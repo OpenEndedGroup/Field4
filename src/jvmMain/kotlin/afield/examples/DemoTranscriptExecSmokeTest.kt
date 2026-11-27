@@ -908,6 +908,9 @@ object DemoTranscriptExecSmokeTest {
         "polytope_layer_stack_path_trace",
         "photo_mount_path_trace",
         "physics_manifold_path_trace",
+        // chain_kirigami_solid.md#stretched-until-it-pops-up: the HingedPlates sweep is covered by the
+        // FIELD_TEST chain.kirigami-popup and HingedPlatesTest; the trace box needs the window.
+        "kirigami_popup",
         // chain_rhino_render.md: the Save Small .3dm through PathTraceScene.rhino. Its CPU half is
         // RhinoPathTraceTest, which needs the optional openNURBS wrapper as well.
         "rhino_path_trace",
@@ -1025,6 +1028,10 @@ object DemoTranscriptExecSmokeTest {
         "gezira_gpu_winding",
         // The whole tiger through GeziraGpuScene (2026-11-22); needs a native Window and a GPU.
         "gezira_gpu_tiger",
+        // FLineLayers (2026-11-27): a list of FLines as three vertex-pulled layers, with three
+        // stroke modes and a spatial rules scene. Needs a native Window and a GPU; the
+        // fline-layers-* captures in afield_four_graphics.md check the pixels.
+        "fline_gpu_layers",
         "threebox",
         "rectsl_dataviz",
         "rectsl_plot_axes",
