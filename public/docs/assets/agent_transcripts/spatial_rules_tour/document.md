@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="sr_loom" index="0" -->
 
 ```edn [field-box id="sr_loom" role="properties"]
-{"id" "sr_loom" "index" 0 "name" "2 · Loom with memory" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · Loom with memory" "_tombstone" false "frame" #afield/rect [650.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_loom_code_.kt" "lines" 269 "characters" 10657 "sha256" "60da5985d2c09d0afad91fb975a700e0a335b36a742b5d4b15c82dfde5f9edaa"}]}
+{"id" "sr_loom" "index" 0 "name" "2 · Loom with memory" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · Loom with memory" "_tombstone" false "frame" #afield/rect [650.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_loom_code_.kt" "lines" 256 "characters" 10275 "sha256" "665b0e2692ce16b51ec05c8106d043e47712e93a8171b24448c8f7aa3f8542cf"}]}
 ```
 
 ```kotlin [field-property box="sr_loom" name="code" path="sr_loom_code_.kt"]
@@ -47,28 +47,15 @@ fun bow(a: Vec3, b: Vec3, offset: Double, ink: Vec4, width: Double, opacity: Dou
     }
 }
 
-// A filled ribbon tapers toward both ends and bows toward its centre.
-fun ribbon(a: Vec3, b: Vec3, width: Double, opacity: Double): FLine {
-    val dx = (b.x - a.x).toDouble()
-    val dy = (b.y - a.y).toDouble()
-    val length = hypot(dx, dy).coerceAtLeast(1.0)
-    val normal = vec(-dy / length, dx / length, 0)
-    fun rim(i: Int, side: Double): Vec3 {
-        val t = i / 24.0
-        val swell = sin(PI * t)
-        val offset = swell * (13.0 + side * width)
-        return vec(a.x + dx * t, a.y + dy * t, 0).add(Vec3(normal).mul(offset.toFloat()))
-    }
-    return FLine().apply {
-        moveTo(a)
-        for (i in 1..24) lineTo(rim(i, 1.0))
-        for (i in 23 downTo 1) lineTo(rim(i, -1.0))
-        close()
-        color = vec(treeInk.x, treeInk.y, treeInk.z, treeInk.w * opacity)
-        filled = true
-        stroked = false
-    }
-}
+// Bow the centreline, then give it a width that tapers to zero at both ends.
+fun ribbon(a: Vec3, b: Vec3, width: Double, opacity: Double): FLine =
+    bow(a, b, 17.0, treeInk, 1.0, opacity)
+        .byVariableRibboning(parameterFromLambda { t, _ -> (2.0 * width * sin(PI * t)).toFloat() }, samples = 24)
+        .apply {
+            color = vec(treeInk.x, treeInk.y, treeInk.z, treeInk.w * opacity)
+            filled = true
+            stroked = false
+        }
 
 world.source("shuttles") {
     val start = now
@@ -407,11 +394,12 @@ loop {
 <!-- field-box id="sr_filament" index="2" -->
 
 ```edn [field-box id="sr_filament" role="properties"]
-{"id" "sr_filament" "index" 2 "name" "1 · One filament" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · One filament" "_tombstone" false "frame" #afield/rect [65.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_filament_code_.kt" "lines" 62 "characters" 1862 "sha256" "a24adb692544e4937671b5c97cb1c81d2c5dc627b55328f94702d36c7234345d"}]}
+{"id" "sr_filament" "index" 2 "name" "1 · One filament" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · One filament" "_tombstone" false "frame" #afield/rect [65.0 285.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_filament_code_.kt" "lines" 78 "characters" 2713 "sha256" "080abf46264c1ff0706f28ba05f8f49f7031d9b1671d83aad1655819675fdc12"}]}
 ```
 
 ```kotlin [field-property box="sr_filament" name="code" path="sr_filament_code_.kt"]
 import afield.data.graph.SpatialLifetime.MATCH
+import afield.data.graph.inspectOnClick
 
 val world = SpatialRuleWorld()
 val ink = Vec4(0.8f, 0.92f, 1f, 1f)
@@ -439,18 +427,33 @@ world.source("moving tips") {
 }
 
 world.rules("filaments") {
-    onEnter("join tips", points("tip").pairsWithin(100.0, leave = 120.0)) { (a, b) ->
-        edge("filament", a, b, lifetime = MATCH)
+    val close = points("tip").pairsWithin(100.0, leave = 120.0)
+    onEnter("join tips", close, condition = "Both tips are present within the 120-unit release distance") { (a, b) ->
+        val filament = edge("filament", a, b, lifetime = MATCH)
+        fun stroke(ends: List<Vec3>, opacity: Double = 1.0): FLine {
+            return world.inspectOnClick(filament, spatialStroke(ends, ink, width = 2.0, opacity = opacity)) { why ->
+                val phase = if (why.matchLive == true) "Matched" else "Fading"
+                val inputs =
+                    why.inputs.joinToString { input ->
+                        val status = if (input.live) "live" else "retracted"
+                        "${input.kind} #${input.id} ($status)"
+                    }
+                markdown(
+                    "Why this filament?",
+                    "**$phase** · ${why.ageSeconds.f2} s old\n\n**${why.origin.process}** · $inputs\n\n${why.origin.condition}",
+                )
+            }
+        }
         var ends = [a.pos, b.pos]
         while (match.live) {
             ends = [a.pos, b.pos]
-            draw(spatialStroke(ends, ink, width = 2.0))
+            draw(stroke(ends))
             nextFrame()
         }
 
         val released = now
         while (now - released < 0.7) {
-            draw(spatialStroke(ends, ink, width = 2.0, opacity = 1.0 - (now - released) / 0.7))
+            draw(stroke(ends, opacity = 1.0 - (now - released) / 0.7))
             nextFrame()
         }
     }
@@ -480,7 +483,7 @@ loop {
 <!-- field-box id="sr_tour" index="3" -->
 
 ```edn [field-box id="sr_tour" role="properties"]
-{"id" "sr_tour" "index" 3 "name" "Start here · run the tour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Start here · run the tour" "_tombstone" false "frame" #afield/rect [65.0 70.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_tour_code_.kt" "lines" 58 "characters" 2670 "sha256" "ea30a197582de0db5f9f800a3530b68ecd75222f92b146d222282ecc3989930a"}]}
+{"id" "sr_tour" "index" 3 "name" "Start here · run the tour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Start here · run the tour" "_tombstone" false "frame" #afield/rect [65.0 70.0 290.0 78.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sr_tour_code_.kt" "lines" 58 "characters" 2757 "sha256" "57ac629297e9ab0bc5258daedac8f7eb1931154b9c778f5309a3813faaa0faae"}]}
 ```
 
 ```kotlin [field-property box="sr_tour" name="code" path="sr_tour_code_.kt"]
@@ -507,7 +510,7 @@ val show = slideShow {
             ## 1 · One filament
             Launch this box. Watch the two tips separate, then watch them disappear while still close. The filament remembers its last positions and fades in both cases.
 
-            Find the two `while` loops in the rule. Try a two-second fade, then relaunch.
+            Click the filament while it fades to see which tips are still present and what kept the line alive. Try a two-second fade in the second `while` loop, then relaunch.
 
             Stop this box before you continue. [[back]] [[next:Build a loom →]]""".trimIndent(),
         )

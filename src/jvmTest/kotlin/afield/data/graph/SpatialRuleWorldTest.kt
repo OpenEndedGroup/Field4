@@ -441,6 +441,75 @@ class SpatialRuleWorldTest {
     }
 
     @Test
+    fun computedIdentitiesHaveOneProcessAndRefreshItsBinding() {
+        SpatialRuleWorld().use { world ->
+            var visible = true
+            var starts = 0
+            var exits = 0
+            val readings = mutableListOf<Long>()
+            val previousSizes = mutableListOf<Int>()
+            world.source("seed") {
+                point("seed", Vec3())
+                while (true) nextFrame()
+            }
+            world.rules("measurements") {
+                val measured = computed<Pair<SpatialPoint, Long>>({ listOf(it.first) }) { previous ->
+                    previousSizes += previous.size
+                    val seed = points("seed").singleOrNull()
+                    if (visible && seed != null) listOf(seed to world.frame, seed to -1L) else emptyList()
+                }
+                onMatch("measure", measured) { binding ->
+                    starts++
+                    whileLive { readings += binding.value.second }
+                    readings += binding.value.second
+                    exits++
+                }
+            }
+            repeat(4) { world.step(it.toDouble()) }
+            visible = false
+            world.step(4.0)
+            assertEquals(1, starts)
+            assertEquals(1, exits)
+            assertEquals(listOf(2L, 3L, 4L, 4L), readings)
+            assertEquals(listOf(0, 0, 1, 1, 1), previousSizes)
+        }
+    }
+
+    @Test
+    fun aFadingLineStillExplainsARetractedFactAndItsInputs() {
+        SpatialRuleWorld().use { world ->
+            lateinit var tip: SpatialPoint
+            lateinit var ink: SpatialPoint
+            var shown: SpatialExplanation? = null
+            world.source("tips") {
+                tip = point("tip", Vec3())
+                repeat(3) { nextFrame() }
+                retract(tip)
+            }
+            world.rules("stitches") {
+                onEnter("stitch", points("tip").each(), condition = "A tip is present") {
+                    ink = point("ink", it.pos, lifetime = SpatialLifetime.MATCH)
+                    whileLive()
+                    during(4.0) {
+                        draw(world.inspectOnClick(ink, FLine()) { shown = it })
+                    }
+                }
+            }
+            repeat(5) { world.step(it.toDouble()) }
+            val drawing = world.step(5.0).single()
+            assertEquals(null, world.fact(ink.id))
+            assertNotNull(drawing.onClick)(FLineIntersection(-1, Vec3(), label = drawing.label))
+            val why = assertNotNull(shown)
+            assertEquals(false, why.factLive)
+            assertEquals(false, why.matchLive)
+            assertEquals(listOf(SpatialInput(tip.id, "tip", false)), why.inputs)
+            assertEquals("A tip is present", why.origin.condition)
+            assertEquals(3.0, why.ageSeconds)
+            SpatialRuleWorld().use { other -> assertEquals(null, other.explain(ink)) }
+        }
+    }
+
+    @Test
     fun aClickedLineExplainsItsFact() {
         SpatialRuleWorld().use { world ->
             lateinit var tip: SpatialPoint

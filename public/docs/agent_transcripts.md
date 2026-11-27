@@ -1952,7 +1952,7 @@ tip growth removed. Every box is pure CPU; no `Window`, no `Renderer`.
 ### spatial_rules_tour
 
 Run **Start here · run the tour** to visit three [spatial rule studies](spatial_rules.md).
-Two tips leave a fading filament. Three moving stations weave cubic stitches, link their knots,
+Two tips leave a fading filament you can click to see what made it. Three moving stations weave cubic stitches, link their knots,
 and fit ellipses connected by a tapered minimum spanning tree. The final box moves 1,000 points in
 a breathing torus whose threads appear and fade as their 3D neighbourhoods change.
 

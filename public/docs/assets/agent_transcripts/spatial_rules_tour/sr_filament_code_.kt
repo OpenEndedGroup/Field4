@@ -1,4 +1,5 @@
 import afield.data.graph.SpatialLifetime.MATCH
+import afield.data.graph.inspectOnClick
 
 val world = SpatialRuleWorld()
 val ink = Vec4(0.8f, 0.92f, 1f, 1f)
@@ -26,18 +27,33 @@ world.source("moving tips") {
 }
 
 world.rules("filaments") {
-    onEnter("join tips", points("tip").pairsWithin(100.0, leave = 120.0)) { (a, b) ->
-        edge("filament", a, b, lifetime = MATCH)
+    val close = points("tip").pairsWithin(100.0, leave = 120.0)
+    onEnter("join tips", close, condition = "Both tips are present within the 120-unit release distance") { (a, b) ->
+        val filament = edge("filament", a, b, lifetime = MATCH)
+        fun stroke(ends: List<Vec3>, opacity: Double = 1.0): FLine {
+            return world.inspectOnClick(filament, spatialStroke(ends, ink, width = 2.0, opacity = opacity)) { why ->
+                val phase = if (why.matchLive == true) "Matched" else "Fading"
+                val inputs =
+                    why.inputs.joinToString { input ->
+                        val status = if (input.live) "live" else "retracted"
+                        "${input.kind} #${input.id} ($status)"
+                    }
+                markdown(
+                    "Why this filament?",
+                    "**$phase** · ${why.ageSeconds.f2} s old\n\n**${why.origin.process}** · $inputs\n\n${why.origin.condition}",
+                )
+            }
+        }
         var ends = [a.pos, b.pos]
         while (match.live) {
             ends = [a.pos, b.pos]
-            draw(spatialStroke(ends, ink, width = 2.0))
+            draw(stroke(ends))
             nextFrame()
         }
 
         val released = now
         while (now - released < 0.7) {
-            draw(spatialStroke(ends, ink, width = 2.0, opacity = 1.0 - (now - released) / 0.7))
+            draw(stroke(ends, opacity = 1.0 - (now - released) / 0.7))
             nextFrame()
         }
     }

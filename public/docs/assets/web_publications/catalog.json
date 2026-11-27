@@ -5689,29 +5689,29 @@
     },
     "assets/agent_transcripts/spatial_rules_tour/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
-      "capturedAt": "2026-11-26T12:33:15.915Z",
+      "capturedAt": "2026-11-26T22:53:32.423Z",
       "channels": 4,
       "file": "assets/web_publications/spatial_rules_tour/document/metadata.edn",
       "files": {
-        "assets/web_publications/spatial_rules_tour/document/metadata.edn": "1ac2b5cceeb1aedf2c88b04beae0a298b7826f7b21b4237f301d68670adb5a6d",
-        "assets/web_publications/spatial_rules_tour/document/outputs.json": "b5dbd68a29e81b504fe84df690a3de3c3297f029c5ed6ad3e0008093dd570f65",
-        "assets/web_publications/spatial_rules_tour/outputs/0.html": "5001f07c6bc6421620d489946154c75aa0dbfda4f2220e6e53a79f109122327b",
-        "assets/web_publications/spatial_rules_tour/outputs/1.html": "c1433195a5dc5bc2e3e43238cebfb08b129db74270606e77a8e9650b5eeb9d55",
-        "assets/web_publications/spatial_rules_tour/outputs/2.html": "32c09f6b238280088c5ee0ca23d5f3165af4e6470c6e3f3f3c2ee8b2fc899438",
-        "assets/web_publications/spatial_rules_tour/outputs/3.html": "38683a3705df52e1fa426e1a97c3d49139d86404d55138b47283b8aef6ac9ba9"
+        "assets/web_publications/spatial_rules_tour/document/metadata.edn": "c7c76d8e29c9eb7d55ae69971c5a5608ab524399fadaaadb9c0a1ed8cad993d1",
+        "assets/web_publications/spatial_rules_tour/document/outputs.json": "04f6308019d4bec68fe33956786bf5acf103804fb2cef4857543373d66a53b04",
+        "assets/web_publications/spatial_rules_tour/outputs/0.html": "50827567d8b407a59f88e2c417c7cbff3ea309cb4b03af942639e3a9043aadd8",
+        "assets/web_publications/spatial_rules_tour/outputs/1.html": "8df6e9ffd235012b26c690f5222d258505a48178c8ed5e4a5daa972a5b01d4d5",
+        "assets/web_publications/spatial_rules_tour/outputs/2.html": "52f66756bfb8eef61f7bd63150a8f26aaf4a814a528f1ca12c90c72518d9cc36",
+        "assets/web_publications/spatial_rules_tour/outputs/3.html": "78c6240da4442d669ae4b350ff27e99b3849cf3cd5887cd38c3fef1c382a4c1b"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/spatial_rules_tour/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/spatial_rules_tour.yaml": "54c24e203155fccc280b005f5de3242e432b6a373a0f48182ce022f22f360426",
+        "dev_docs/agents/transcripts/spatial_rules_tour.yaml": "c3efd2657c1cb98e21b4f618e0085458324b660671c74bd50987a57d46362f00",
         "public/docs/assets/agent_transcripts/spatial_rules_tour/guides/spatial_rules.md": "ae738cf7e5dd7f084b228ef8a2615ae3f7bc94a4d599e4c942bdf276cce5cc2a",
-        "public/docs/assets/agent_transcripts/spatial_rules_tour/metadata.edn": "79d9e004bb1e3ff594db16ff8dcc54cf75266dd91f565c3b0916e28d67e67b3d",
-        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_filament_code_.kt": "a24adb692544e4937671b5c97cb1c81d2c5dc627b55328f94702d36c7234345d",
-        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_loom_code_.kt": "60da5985d2c09d0afad91fb975a700e0a335b36a742b5d4b15c82dfde5f9edaa",
+        "public/docs/assets/agent_transcripts/spatial_rules_tour/metadata.edn": "2ebba1e3997a07b07f7d585fa4458522c057c0182ad854bc9eb235edae20ec1d",
+        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_filament_code_.kt": "080abf46264c1ff0706f28ba05f8f49f7031d9b1671d83aad1655819675fdc12",
+        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_loom_code_.kt": "665b0e2692ce16b51ec05c8106d043e47712e93a8171b24448c8f7aa3f8542cf",
         "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_torus_code_.kt": "0c1bbd6a977d42828dbb4b630d1b0ab60263f9bd607e6cd2c471135788038412",
-        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_tour_code_.kt": "ea30a197582de0db5f9f800a3530b68ecd75222f92b146d222282ecc3989930a"
+        "public/docs/assets/agent_transcripts/spatial_rules_tour/sr_tour_code_.kt": "57ac629297e9ab0bc5258daedac8f7eb1931154b9c778f5309a3813faaa0faae"
       }
     },
     "assets/agent_transcripts/spatial_rules_web/metadata.edn": {

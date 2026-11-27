@@ -21,7 +21,7 @@ val show = slideShow {
             ## 1 · One filament
             Launch this box. Watch the two tips separate, then watch them disappear while still close. The filament remembers its last positions and fades in both cases.
 
-            Find the two `while` loops in the rule. Try a two-second fade, then relaunch.
+            Click the filament while it fades to see which tips are still present and what kept the line alive. Try a two-second fade in the second `while` loop, then relaunch.
 
             Stop this box before you continue. [[back]] [[next:Build a loom →]]""".trimIndent(),
         )
