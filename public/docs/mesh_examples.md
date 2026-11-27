@@ -424,6 +424,68 @@ Both smoothers take `cotangent = true` for the cotangent-weighted Laplacian, whi
 choice on an irregular triangulation because it weights by the geometry rather than by valence, and
 `withVertexNormals()` recomputes the shading normals afterwards.
 
+### One cotangent Laplacian
+
+Smoothing, the heat-method geodesics, mean curvature and the spectral basis all use the same
+cotangent Laplacian, and you can ask for its pieces yourself.
+[`cotangentWeights()`](reference/graphics.md#mesh-laplacian-kt--cotangentweights) on a mesh's
+[`MeshTopology`](reference/graphics.md#mesh-topology-kt-meshtopology) gives one weight per edge, `(cot α + cot β)/2`,
+where a boundary edge keeps its single `cot α / 2`.
+[`barycentricVertexAreas()`](reference/graphics.md#mesh-laplacian-kt--barycentricvertexareas) gives each vertex a
+third of the area of its triangles, and
+[`cotangentLaplacianMatrix(weights, mass, massScale, lScale)`](reference/graphics.md#mesh-laplacian-kt--cotangentlaplacianmatrix)
+assembles `massScale·M + lScale·L` as a sparse matrix for your own solves. The whole file is
+[`mesh_laplacian.kt`](reference/graphics.md#mesh-laplacian-kt) in the reference. This box builds all three on a lumpy
+sphere, checks two things that must hold, and runs the smoother that uses the same weights:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/cotangent_laplacian.png" wait="3.0" capture="box" open-outputs="true" padding="20" name="mesh-cotangent-laplacian" alt="Two shaded spheres side by side: a lumpy sphere roughened by fine noise, and the same sphere after twenty cotangent Taubin passes, the fine noise gone and the broad lumps kept; with a readout of the edge weights, the summed mass against the surface area, and the largest row sum of L"}
+// A lumpy icosphere, and fine noise on top of it for the smoother to take away.
+val sphere = icosphereMesh(4, 1.0)
+val lumpy = sphere.positions.copyOf()
+for (v in 0 until sphere.vertexCount) {
+    val bump = 1f + 0.08f * kotlin.math.sin(9f * sphere.x(v)) * kotlin.math.cos(7f * sphere.y(v))
+    for (d in 0..2) lumpy[3 * v + d] *= bump
+}
+val ball = TriMesh(lumpy, sphere.indices.copyOf()).withVertexNormals()
+val rough = ball.positions.copyOf()
+for (i in rough.indices) rough[i] += 0.025f * kotlin.math.sin(37f * i)
+val noisy = TriMesh(rough, ball.indices.copyOf()).withVertexNormals()
+
+val topo = ball.topology()
+val weights = topo.cotangentWeights()
+val mass = ball.barycentricVertexAreas()
+val laplacian = topo.cotangentLaplacianMatrix(weights)
+
+// L sends a constant to zero, so every row sums to zero; the mass adds up to the surface area.
+val rowSums = DoubleArray(ball.vertexCount)
+for (col in 0 until laplacian.numCols) {
+    for (k in laplacian.col_idx[col] until laplacian.col_idx[col + 1]) rowSums[laplacian.nz_rows[k]] +=
+        laplacian.nz_values[k]
+}
+markdown(
+    "readout",
+    "${topo.edgeCount} edge weights, ${weights.count { it < 0 }} negative (obtuse pairs) · " +
+        "sum of mass %.5f, surface area %.5f · max |L·1| %.2e"
+            .format(mass.sum(), ball.surfaceArea(), rowSums.maxOf { kotlin.math.abs(it) }),
+)
+
+val smoothed = noisy.taubinSmooth(20, cotangent = true)
+three(height = 340) {
+    columns(2)
+    panel(title = "lumpy sphere with fine noise")
+    mesh(noisy, wireframe = false)
+    panel(title = "taubinSmooth(20, cotangent = true)")
+    mesh(smoothed, wireframe = false)
+}
+```
+
+![Two shaded spheres side by side: a lumpy sphere roughened by fine noise, and the same sphere after twenty cotangent Taubin passes, the fine noise gone and the broad lumps kept; with a readout of the edge weights, the summed mass against the surface area, and the largest row sum of L](assets/mesh_examples/cotangent_laplacian.png)
+
+All 7680 edges of this sphere get positive weights, because on every edge the two opposite angles
+add up to less than 180°. The barycentric masses add up to 13.43929, the surface area exactly, and every
+row of `L` sums to zero within 1.11e-15. The smoother on the right uses these same weights. It takes
+away the fine noise and keeps the broad lumps.
+
 ## Decimate to a budget, and know the price
 
 `decimate(targetTriangles)` is quadric-error-metric edge collapse: each vertex accumulates the
@@ -1223,6 +1285,9 @@ Change surface normals, density or smoothness.
 
 | Entry point | Behavior |
 | --- | --- |
+| `fun MeshTopology.cotangentWeights(): DoubleArray` | One cotangent weight per edge, `(cot α + cot β)/2`, indexed like `edges`; a boundary edge keeps its single `cot α / 2`. [API](reference/graphics.md#mesh-laplacian-kt--cotangentweights). |
+| `fun TriMesh.barycentricVertexAreas(): DoubleArray` | The lumped mass: each vertex gets a third of the area of every triangle it touches. [API](reference/graphics.md#mesh-laplacian-kt--barycentricvertexareas). |
+| `fun MeshTopology.cotangentLaplacianMatrix(...)` | `massScale·M + lScale·L` as a sparse matrix, the operator smoothing, geodesics, curvature and the spectral basis share. [API](reference/graphics.md#mesh-laplacian-kt--cotangentlaplacianmatrix). |
 | `fun TriMesh.withVertexNormals(areaWeighted: Boolean = true): TriMesh` | Per-vertex normals from the incident triangles, each weighted by its area. [API](reference/graphics.md#mesh-process-kt). |
 | `fun TriMesh.flatShaded(): TriMesh` | One normal per **triangle**: every triangle gets its own three vertices, so every edge is hard. [API](reference/graphics.md#mesh-process-kt). |
 | `fun TriMesh.shadedNormals(creaseAngleDegrees: Double = 35.0): TriMesh` | Crease-aware normals: smooth across edges where the two faces are within `creaseAngleDegrees` of each other, hard where they are not. [API](reference/graphics.md#mesh-process-kt). |

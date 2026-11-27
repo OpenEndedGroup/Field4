@@ -1,0 +1,123 @@
+# One cotangent Laplacian under smoothing, heat geodesics, curvature and the conformal maps (mesh_examples.md).
+name: "one_cotangent_laplacian"
+docs:
+  - page: mesh_examples.md
+    why: "The shared cotangent operator (cotangentWeights, barycentricVertexAreas, cotangentLaplacianMatrix) and three things built on it."
+operations:
+  - create:
+      box: "cotangent-operator"
+      name: "The operator itself: weights, mass, and L on a lumpy sphere"
+      frame: { x: 60.0, y: 60.0, w: 420.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A lumpy icosphere, then the three pieces every cotangent caller now shares.
+          val sphere = icosphereMesh(4, 1.0)
+          val lumpy = sphere.positions.copyOf()
+          for (v in 0 until sphere.vertexCount) {
+              val bump = 1f + 0.08f * kotlin.math.sin(9f * sphere.x(v)) * kotlin.math.cos(7f * sphere.y(v))
+              for (d in 0..2) lumpy[3 * v + d] *= bump
+          }
+          val ball = TriMesh(lumpy, sphere.indices.copyOf()).withVertexNormals()
+          // Fine noise on top of the lumps, for the smoother to take away.
+          val rough = ball.positions.copyOf()
+          for (i in rough.indices) rough[i] += 0.025f * kotlin.math.sin(37f * i)
+          val noisy = TriMesh(rough, ball.indices.copyOf()).withVertexNormals()
+          val topo = ball.topology()
+          val weights = topo.cotangentWeights()
+          val mass = ball.barycentricVertexAreas()
+          val laplacian = topo.cotangentLaplacianMatrix(weights)
+
+          // L annihilates constants, and the lumped mass adds up to the surface area.
+          var rowSumMax = 0.0
+          val rowSums = DoubleArray(ball.vertexCount)
+          for (col in 0 until laplacian.numCols) for (k in laplacian.col_idx[col] until laplacian.col_idx[col + 1]) rowSums[
+              laplacian.nz_rows[k]] += laplacian.nz_values[k]
+          for (s in rowSums) rowSumMax = maxOf(rowSumMax, kotlin.math.abs(s))
+          println("${topo.edgeCount} edge weights, ${weights.count { it < 0 }} negative (obtuse pairs)")
+          println("sum of mass %.5f, surface area %.5f, max |L·1| %.2e".format(mass.sum(), ball.surfaceArea(), rowSumMax))
+
+          // The same weights drive the smoother: cotangent Taubin against the lumpy input.
+          val smoothed = noisy.taubinSmooth(20, cotangent = true)
+          three(height = 340) {
+              columns(2)
+              panel(title = "lumpy sphere with fine noise")
+              mesh(noisy, wireframe = false)
+              panel(title = "taubinSmooth(20, cotangent = true)")
+              mesh(smoothed, wireframe = false)
+          }
+  - create:
+      box: "heat-and-curvature"
+      name: "Heat geodesics and mean curvature from the same L"
+      frame: { x: 1260.0, y: 60.0, w: 420.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // HeatGeodesics factors massScale·M + t·L built by cotangentLaplacianMatrix; meanCurvature applies L to positions.
+          val sphere = icosphereMesh(4, 1.0)
+          val lumpy = sphere.positions.copyOf()
+          for (v in 0 until sphere.vertexCount) {
+              val bump = 1f + 0.08f * kotlin.math.sin(9f * sphere.x(v)) * kotlin.math.cos(7f * sphere.y(v))
+              for (d in 0..2) lumpy[3 * v + d] *= bump
+          }
+          val ball = TriMesh(lumpy, sphere.indices.copyOf()).withVertexNormals()
+          val source = ball.nearestVertex(0, 1, 0)
+          val distance = ball.geodesicDistance(source)
+          val mean = ball.meanCurvature()
+          println(
+              "farthest point %.3f along the surface; mean curvature %.2f to %.2f".format(distance.max(), mean.min(), mean.max()),
+          )
+
+          three(height = 340) {
+              columns(2)
+              panel(title = "geodesic distance from the north pole")
+              mesh(ball.colouredBy(distance), wireframe = false)
+              val rings = ball.evenIsolines(distance, 0.25).flatten()
+              lines(
+                  rings.map { r ->
+                      r.map { vec(it.x * 1.01f, it.y * 1.01f, it.z * 1.01f) }.toFLine3(vec(1.0, 1.0, 1.0, 0.95), 1.4)
+                  },
+                  id = "rings",
+                  panel = 0,
+              )
+              panel(title = "mean curvature")
+              mesh(ball.colouredBy(mean, -3.0, 4.0), wireframe = false)
+          }
+  - create:
+      box: "flat-harmonic-map"
+      name: "A flat TriMesh through the Beltrami solver: square onto disc"
+      frame: { x: 2460.0, y: 60.0, w: 420.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          import afield.geometry.conformal.harmonicMap
+          import afield.geometry.conformal.toPlanarMesh
+
+          // planeMesh is a TriMesh; toPlanarMesh hands it to the conformal solvers, whose μ = 0 case is the same cotangent L.
+          val square = planeMesh(24, 24, 2.0, 2.0)
+          val planar = square.toPlanarMesh()
+          val disc =
+              planar.boundary.associateWith { i ->
+                  val r = kotlin.math.hypot(planar.x[i], planar.y[i])
+                  doubleArrayOf(planar.x[i] / r, planar.y[i] / r)
+              }
+          val map = harmonicMap(planar, disc)
+          println("${planar.vertexCount} vertices; mean |μ| of the harmonic map %.3f".format(map.meanModulus))
+
+          val positions = FloatArray(square.vertexCount * 3)
+          for (i in 0 until square.vertexCount) {
+              positions[3 * i] = map.u[i].toFloat()
+              positions[3 * i + 1] = map.v[i].toFloat()
+          }
+          val mapped = TriMesh(positions, square.indices.copyOf())
+          // A checkerboard on the square's own coordinates shows where each cell went.
+          val checker =
+              DoubleArray(square.vertexCount) { i -> kotlin.math.sin(6.0 * square.x(i)) * kotlin.math.sin(6.0 * square.y(i)) }
+          val top = ThreeCameraSpec(yawDegrees = 0.0, pitchDegrees = 0.0)
+          three(height = 340) {
+              columns(2)
+              panel(title = "planeMesh(24, 24)", camera = top)
+              mesh(square.colouredBy(checker, bands = 2), wireframe = false)
+              panel(title = "harmonicMap onto the unit disc", camera = top)
+              mesh(mapped.colouredBy(checker, bands = 2), wireframe = false)
+          }

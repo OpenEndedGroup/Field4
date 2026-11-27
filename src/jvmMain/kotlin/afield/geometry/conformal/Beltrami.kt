@@ -46,6 +46,9 @@
 
 package afield.geometry.conformal
 
+import afield.geometry.mesh.TriMesh
+import afield.geometry.mesh.topology
+
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -838,3 +841,38 @@ class MeshPicture(val width: Int, val height: Int, val x0: Double, val y0: Doubl
         }
     }
 }
+
+/**
+ * This planar mesh as a flat [TriMesh] at `z = 0`, triangles in the same order. The way back is
+ * [TriMesh.toPlanarMesh]; between the two, the conformal maps here and the mesh tools in
+ * `afield.geometry.mesh` (smoothing, geodesics, the shared cotangent Laplacian) work on one mesh.
+ */
+fun PlanarMesh.toTriMesh(): TriMesh {
+    val p = FloatArray(vertexCount * 3)
+    for (i in 0 until vertexCount) { p[3 * i] = x[i].toFloat(); p[3 * i + 1] = y[i].toFloat() }
+    return TriMesh(p, triangles.copyOf())
+}
+
+/**
+ * A flat [TriMesh] — a disc: welded, manifold, with one boundary loop — as a [PlanarMesh] for
+ * [harmonicMap], [teichmullerMap] and [LinearBeltramiSolver]. Its `x` and `y` are kept and `z` is
+ * dropped, so project a mesh into the `xy` plane first. Triangles are rewound counter-clockwise
+ * and the boundary is ordered counter-clockwise, which is what [PlanarMesh] expects.
+ */
+fun TriMesh.toPlanarMesh(): PlanarMesh {
+    val loops = topology().boundaryLoops
+    require(loops.size == 1) { "toPlanarMesh needs a disc (one boundary loop), got ${loops.size}" }
+    val x = DoubleArray(vertexCount) { x(it).toDouble() }
+    val y = DoubleArray(vertexCount) { y(it).toDouble() }
+    val tri = indices.copyOf()
+    for (t in 0 until triangleCount) {
+        val a = tri[3 * t]; val b = tri[3 * t + 1]; val c = tri[3 * t + 2]
+        if ((x[b] - x[a]) * (y[c] - y[a]) - (x[c] - x[a]) * (y[b] - y[a]) < 0) { tri[3 * t + 1] = c; tri[3 * t + 2] = b }
+    }
+    val loop = loops[0].toIntArray()
+    var signed = 0.0
+    for (k in loop.indices) { val i = loop[k]; val j = loop[(k + 1) % loop.size]; signed += x[i] * y[j] - x[j] * y[i] }
+    if (signed < 0) loop.reverse()
+    return PlanarMesh(x, y, tri, loop)
+}
+

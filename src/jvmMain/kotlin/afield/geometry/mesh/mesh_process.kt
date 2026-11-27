@@ -317,8 +317,8 @@ private fun loopSubdivideOnce(mesh: TriMesh): TriMesh {
         val faces = topo.edgeTriangles[e]
         if (faces.size == 2) {
             // 3/8 each endpoint, 1/8 each opposite corner.
-            val c = opposite(mesh, faces[0], a, b)
-            val d = opposite(mesh, faces[1], a, b)
+            val c = oppositeCorner(mesh, faces[0], a, b)
+            val d = oppositeCorner(mesh, faces[1], a, b)
             edgeVertex[e] = out.vertex(
                 0.375f * (mesh.x(a) + mesh.x(b)) + 0.125f * (mesh.x(c) + mesh.x(d)),
                 0.375f * (mesh.y(a) + mesh.y(b)) + 0.125f * (mesh.y(c) + mesh.y(d)),
@@ -345,16 +345,6 @@ private fun loopSubdivideOnce(mesh: TriMesh): TriMesh {
         out.triangle(ab, bc, ca)
     }
     return out.build()
-}
-
-/** The corner of triangle [t] that is neither [a] nor [b]. */
-private fun opposite(mesh: TriMesh, t: Int, a: Int, b: Int): Int {
-    val ta = mesh.ia(t); val tb = mesh.ib(t); val tc = mesh.ic(t)
-    return when {
-        ta != a && ta != b -> ta
-        tb != a && tb != b -> tb
-        else -> tc
-    }
 }
 
 // ==============================================================================================
@@ -434,7 +424,7 @@ private fun smoothingPass(
 ): FloatArray {
     val n = mesh.vertexCount
     val out = pos.copyOf()
-    val weights = if (cotangent) cotangentWeights(mesh, topo, pos) else null
+    val weights = if (cotangent) topo.cotangentWeights(pos) else null
     for (v in 0 until n) {
         if (preserveBoundary && v in topo.boundaryVertices) continue
         val ring = topo.neighbors(v)
@@ -452,36 +442,6 @@ private fun smoothingPass(
         out[v * 3 + 2] = pos[v * 3 + 2] + step * ((sz / total).toFloat() - pos[v * 3 + 2])
     }
     return out
-}
-
-/**
- * `(cot α + cot β) / 2` per edge, where α and β are the angles opposite it in its two triangles —
- * the discrete Laplace-Beltrami weights.
- *
- * Indexed by [MeshTopology.edges] position. Boundary edges get the single available cotangent.
- */
-private fun cotangentWeights(mesh: TriMesh, topo: MeshTopology, pos: FloatArray): DoubleArray {
-    val w = DoubleArray(topo.edgeCount)
-    fun cotAt(t: Int, a: Int, b: Int): Double {
-        val c = opposite(mesh, t, a, b)
-        val ux = (pos[a * 3] - pos[c * 3]).toDouble()
-        val uy = (pos[a * 3 + 1] - pos[c * 3 + 1]).toDouble()
-        val uz = (pos[a * 3 + 2] - pos[c * 3 + 2]).toDouble()
-        val vx = (pos[b * 3] - pos[c * 3]).toDouble()
-        val vy = (pos[b * 3 + 1] - pos[c * 3 + 1]).toDouble()
-        val vz = (pos[b * 3 + 2] - pos[c * 3 + 2]).toDouble()
-        val dot = ux * vx + uy * vy + uz * vz
-        val cx = uy * vz - uz * vy; val cy = uz * vx - ux * vz; val cz = ux * vy - uy * vx
-        val crossLen = sqrt(cx * cx + cy * cy + cz * cz)
-        return if (crossLen < 1e-18) 0.0 else dot / crossLen
-    }
-    for (e in 0 until topo.edgeCount) {
-        val (a, b) = topo.edges[e]
-        var sum = 0.0
-        for (t in topo.edgeTriangles[e]) sum += cotAt(t, a, b)
-        w[e] = sum / 2.0
-    }
-    return w
 }
 
 // ==============================================================================================

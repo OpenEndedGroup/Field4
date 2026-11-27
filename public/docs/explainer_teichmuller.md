@@ -276,6 +276,57 @@ controlGroup {
 }
 ```
 
+
+The solvers work on a [`PlanarMesh`](reference/math.md#beltrami-kt-planarmesh), and a flat
+[`TriMesh`](reference/graphics.md#mesh-kt-trimesh) in the `xy` plane converts to one, as long as it is a disc with a single
+boundary loop: [`toPlanarMesh()`](reference/math.md#beltrami-kt--toplanarmesh) orders that boundary for the solver,
+and [`toTriMesh()`](reference/math.md#beltrami-kt--totrimesh) turns a `PlanarMesh` back into a mesh for the mesh tools. At μ = 0 the matrix
+[`LinearBeltramiSolver`](reference/math.md#beltrami-kt-linearbeltramisolver) assembles is the same cotangent
+Laplacian the mesh tools share ([One cotangent Laplacian](mesh_examples.md#one-cotangent-laplacian)).
+Here a square from `planeMesh` is mapped harmonically onto the unit disc:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/explainer_teichmuller/flat_trimesh.png" wait="3" capture="box" open-outputs="true" padding="20" name="explainer-teichmuller-flat-trimesh" alt="Two flat meshes seen from above, coloured by the same checkerboard: a square grid, and the same grid mapped harmonically onto a disc, its checks squeezed where the square's corners were pulled in to the circle"}
+:::fold imports
+import afield.geometry.conformal.harmonicMap
+import afield.geometry.conformal.toPlanarMesh
+:::endfold
+
+// A TriMesh square, handed to the conformal solver with its boundary sent to the unit circle.
+val square = planeMesh(24, 24, 2.0, 2.0)
+val planar = square.toPlanarMesh()
+val disc =
+    planar.boundary.associateWith { i ->
+        val r = kotlin.math.hypot(planar.x[i], planar.y[i])
+        doubleArrayOf(planar.x[i] / r, planar.y[i] / r)
+    }
+val map = harmonicMap(planar, disc)
+markdown("readout", "${planar.vertexCount} vertices · mean |μ| of the harmonic map %.3f".format(map.meanModulus))
+
+// The mapped vertices as a TriMesh again, coloured by a checkerboard on the square's coordinates.
+val positions = FloatArray(square.vertexCount * 3)
+for (i in 0 until square.vertexCount) {
+    positions[3 * i] = map.u[i].toFloat()
+    positions[3 * i + 1] = map.v[i].toFloat()
+}
+val mapped = TriMesh(positions, square.indices.copyOf())
+val checker =
+    DoubleArray(square.vertexCount) { i -> kotlin.math.sin(6.0 * square.x(i)) * kotlin.math.sin(6.0 * square.y(i)) }
+val top = ThreeCameraSpec(yawDegrees = 0.0, pitchDegrees = 0.0)
+three(height = 340) {
+    columns(2)
+    panel(title = "planeMesh(24, 24)", camera = top)
+    mesh(square.colouredBy(checker, bands = 2), wireframe = false)
+    panel(title = "harmonicMap onto the unit disc", camera = top)
+    mesh(mapped.colouredBy(checker, bands = 2), wireframe = false)
+}
+```
+
+![Two flat meshes seen from above, coloured by the same checkerboard: a square grid, and the same grid mapped harmonically onto a disc, its checks squeezed where the square's corners were pulled in to the circle](assets/explainer_teichmuller/flat_trimesh.png)
+
+The square has 625 vertices. A square cannot go onto a disc conformally, because its corners have
+to open out from 90° to 180°, so even the harmonic map has a mean |μ| of 0.109. The checks near the
+corners are the most squeezed.
+
 ## No conformal map exists
 
 <figure class="field-margin-figure" markdown>

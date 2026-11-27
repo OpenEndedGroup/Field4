@@ -3823,6 +3823,31 @@
         "public/docs/assets/agent_transcripts/offline_viewer_demo/metadata.edn": "1148e23c27aba59d8b7d23e74365b439494f24af627e6d25e7552fc4db3a2bcb"
       }
     },
+    "assets/agent_transcripts/one_cotangent_laplacian/metadata.edn": {
+      "captureDigest": "dae71325c6de8386066240231aac1762db1b9a954d32608e4f55a847371d2fb6",
+      "capturedAt": "2026-11-27T14:32:46.477Z",
+      "channels": 3,
+      "file": "assets/web_publications/one_cotangent_laplacian/document/metadata.edn",
+      "files": {
+        "assets/web_publications/one_cotangent_laplacian/document/metadata.edn": "e382dbaebf4d8aaffd2cce448c7528c52c29bf8c5c0be04a9b2e3b3c2a0008da",
+        "assets/web_publications/one_cotangent_laplacian/document/outputs.json": "1a4ae8ed5e9ee66679e8bcc549a9b75b906f1a08b1b92e7337b00da677db6c9f",
+        "assets/web_publications/one_cotangent_laplacian/outputs/0.html": "961b52cc73f361d66d851fe0c8a4074e5d4d6552a4849111fc200a3b7d95b02e",
+        "assets/web_publications/one_cotangent_laplacian/outputs/1.html": "bb2d5d532f1c5a59ab7d6a01ac44a135fc0ad5f683d9aa7db0bf436ab5683e21",
+        "assets/web_publications/one_cotangent_laplacian/outputs/2.html": "6adfeaf2465c51378359b8e09512607d4e37fe9e7b81a15e244fdc7a77875655"
+      },
+      "kinds": [
+        "three"
+      ],
+      "outputs": "assets/web_publications/one_cotangent_laplacian/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/one_cotangent_laplacian.yaml": "1ac9b06d4b699c23781a1bb9a63d2bd7652e672e5eb9378953ac20e5d84d1d21",
+        "public/docs/assets/agent_transcripts/one_cotangent_laplacian/cotangent-operator_code_.kt": "1391b0e5cf9cb4310002e5017bf4bd62b840816db92c6755207a5c9b7e3e2a84",
+        "public/docs/assets/agent_transcripts/one_cotangent_laplacian/flat-harmonic-map_code_.kt": "2de10e2d71ff11e1712a505537f78c869ac38ce0ad66e40de091d49e25d205ba",
+        "public/docs/assets/agent_transcripts/one_cotangent_laplacian/guides/mesh_examples.md": "afc7f0b66bf7eb9e5e59802bd55be68ce871718ef01509fb70c230a494ab2069",
+        "public/docs/assets/agent_transcripts/one_cotangent_laplacian/heat-and-curvature_code_.kt": "0b15b4b5d109fbbf6234e84fcbab89113b8c58c74d24f7bfde64bf727d02a074",
+        "public/docs/assets/agent_transcripts/one_cotangent_laplacian/metadata.edn": "4da9c13f342c37416e07fd3e7705092bd438d9d332ad233923335e0be7a73c1e"
+      }
+    },
     "assets/agent_transcripts/open_dlss_nr/metadata.edn": {
       "captureDigest": "f08f3a843941d67a60d9d2558f4ba62e2b7a7faa4289daf60723e1898700fde0",
       "capturedAt": "2026-11-18T15:42:08.082Z",

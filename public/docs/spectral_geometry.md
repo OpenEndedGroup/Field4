@@ -215,7 +215,9 @@ The resulting distribution is isotropic. A particular draw has finitely many dir
 ## Manifold harmonics
 
 `CotangentLaplacian(mesh).basis(count)` computes the lowest modes of a welded triangle
-mesh. Open boundaries have natural Neumann conditions. Disconnected components each
+mesh. Its stiffness and mass are the mesh module's shared `cotangentLaplacianMatrix()` and
+`barycentricVertexAreas()`, the same operator smoothing and geodesics use. Open boundaries have
+natural Neumann conditions. Disconnected components each
 contribute a constant mode. Degenerate faces, isolated vertices, and non-manifold inputs
 raise an error. For large meshes request a partial basis, since both its size and the cost
 of reconstruction scale with vertices times modes.
