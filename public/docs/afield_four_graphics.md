@@ -2613,7 +2613,7 @@ loop {
 Seeds drift, nearby seeds bond, and triangles of bonds fill in, drawn by the three layers in the
 native window:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/fline-layers-spatial.png" alt="Pale blue translucent triangles joined edge to edge across a black window, a web of thin white bond lines over them with a small white dot at each seed, and a few bonds and lone seeds at the edges with no triangle; one triangle near the centre is still dark, just starting to fade in" timeout="240" capture="native-window" native-wait-frames="120" trim-native=true embed=true name="fline-layers-spatial" macro-file="../../dev_docs/agents/transcripts/fline_gpu_layers.yaml" capture-box="flg_renderer"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/fline-layers-spatial.png" alt="Pale blue translucent triangles joined edge to edge across a black window, a web of thin white bond lines over them with a small white dot at each seed, and a few bonds and lone seeds at the edges with no triangle; one triangle near the centre is still dark, just starting to fade in" timeout="240" capture="native-window" native-wait-frames="120" trim-native=true max-width="1600" embed=true name="fline-layers-spatial" macro-file="../../dev_docs/agents/transcripts/fline_gpu_layers.yaml" capture-box="flg_renderer"}
 // dev_docs/agents/transcripts/fline_gpu_layers.yaml: the starting point, as it opens
 ```
 
@@ -2697,13 +2697,13 @@ the same name, `"fline strokes"`, so launching one replaces whichever was drawin
 Six translucent strokes, 6 to 56 pixels thick, drawn by **strokes**: each join shows as a brighter
 disc, and the folds at the right as a brighter wedge.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/fline-layers-strokes.png" alt="Six gold translucent strokes against black, each a gentle wave ending in a sharp zigzag at the right, growing from a hairline at the top to a very thick stroke at the bottom; along every stroke a brighter disc marks each join between segments, and the zigzags at the right have a brighter wedge where the stroke folds back over itself" timeout="240" capture="native-window" native-wait-frames="60" trim-native=true embed=true name="fline-layers-strokes" macro-file="../../dev_docs/agents/transcripts/docs_capture/fline_gpu_layers_strokes.yaml" capture-box="flg_renderer"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/fline-layers-strokes.png" alt="Six gold translucent strokes against black, each a gentle wave ending in a sharp zigzag at the right, growing from a hairline at the top to a very thick stroke at the bottom; along every stroke a brighter disc marks each join between segments, and the zigzags at the right have a brighter wedge where the stroke folds back over itself" timeout="240" capture="native-window" native-wait-frames="60" trim-native=true max-width="1600" embed=true name="fline-layers-strokes" macro-file="../../dev_docs/agents/transcripts/docs_capture/fline_gpu_layers_strokes.yaml" capture-box="flg_renderer"}
 // dev_docs/agents/transcripts/docs_capture/fline_gpu_layers_strokes.yaml: "strokes"
 ```
 
 The same strokes drawn by **strokes, joined**, launched over the first:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/fline-layers-strokes-joined.png" alt="The same six gold waves with their zigzags, now an even tone from end to end: no brighter discs at the joins and no brighter wedge where the zigzags fold back, with smooth round ends" timeout="240" capture="native-window" native-wait-frames="60" trim-native=true embed=true name="fline-layers-strokes-joined" macro-file="../../dev_docs/agents/transcripts/docs_capture/fline_gpu_layers_strokes.yaml" capture-box="flg_renderer" run-box="flg_strokes_joined" execution="launch"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/fline-layers-strokes-joined.png" alt="The same six gold waves with their zigzags, now an even tone from end to end: no brighter discs at the joins and no brighter wedge where the zigzags fold back, with smooth round ends" timeout="240" capture="native-window" native-wait-frames="60" trim-native=true max-width="1600" embed=true name="fline-layers-strokes-joined" macro-file="../../dev_docs/agents/transcripts/docs_capture/fline_gpu_layers_strokes.yaml" capture-box="flg_renderer" run-box="flg_strokes_joined" execution="launch"}
 // dev_docs/agents/transcripts/docs_capture/fline_gpu_layers_strokes.yaml: then "strokes, joined"
 ```
 

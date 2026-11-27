@@ -57,18 +57,20 @@ import kotlin.math.min
  *
  * Only call [upload] and [close] from one thread, usually a box's `loop { }`. The renderer reads
  * the layers' buffers and counts at draw time.
+ *
+ * @param samplesPerCubic how many straight samples a `cubicTo` becomes, in strokes and fills.
+ * @param initialVertices starting size of each layer's buffers, in vertices. They grow as needed.
  */
 class FLineLayers(
     val renderer: Renderer,
-    /** How many straight samples a `cubicTo` becomes, in strokes and fills. Changing it repacks everything. */
     samplesPerCubic: Int = 16,
-    /** Starting size of each layer's buffers, in vertices. They grow as needed. */
     initialVertices: Int = 4096,
 ) : AutoCloseable {
 
     /** The lines [upload] draws, in drawing order (a later line draws over an earlier one in the same layer). */
     val lines: MutableList<FLine> = ArrayList()
 
+    /** How many straight samples a `cubicTo` becomes, in strokes and fills. Changing it repacks everything. */
     var samplesPerCubic: Int = samplesPerCubic
         set(value) {
             if (value != field) packer.clear()

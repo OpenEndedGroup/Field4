@@ -90,7 +90,7 @@ operations:
           // segment unless i + 1 starts a new run, which it says with a negative w.
           struct FLineVertex {
               vec4 position; // xyz: world position; w: thickness in pixels, negated on a run's first vertex
-              vec4 color;    // straight-alpha RGBA, 0..1
+              vec4 color; // straight-alpha RGBA, 0..1
           };
 
           layout(std430, buffer_reference, buffer_reference_align = 16) readonly buffer FLineVertices {
@@ -98,16 +98,16 @@ operations:
           };
 
           layout(push_constant) uniform StrokePC {
-              mat4 p;                // projection
-              mat4 m;                // model-view
+              mat4 p; // projection
+              mat4 m; // model-view
               FLineVertices vertices;
-              uint count;            // vertices in the layer
-              vec2 viewport;         // framebuffer size, pixels
-              float widthScale;      // multiplies every thickness
+              uint count; // vertices in the layer
+              vec2 viewport; // framebuffer size, pixels
+              float widthScale; // multiplies every thickness
           } pc;
 
           layout(location = 0) out vec4 color;
-          layout(location = 1) out vec2 local;        // pixels: x along the segment from its start, y across it
+          layout(location = 1) out vec2 local; // pixels: x along the segment from its start, y across it
           layout(location = 2) flat out vec2 lengthRadius; // pixels: segment length, half the stroke width
 
           // Two triangles over a unit square; x runs along the segment, y across it.
@@ -123,18 +123,28 @@ operations:
           void main() {
               uint s = uint(gl_VertexIndex) / 6u;
               vec2 corner = corners[gl_VertexIndex % 6];
-              if (s + 1u >= pc.count) { collapse(); return; }
+              if (s + 1u >= pc.count) {
+                  collapse();
+                  return;
+              }
 
               FLineVertex a = pc.vertices.v[s];
               FLineVertex b = pc.vertices.v[s + 1u];
-              if (b.position.w < 0.0) { collapse(); return; } // b begins the next run
+              // b begins the next run.
+              if (b.position.w < 0.0) {
+                  collapse();
+                  return;
+              }
 
               // Clip both ends, then pull an end that is behind the camera onto the near side.
               mat4 pm = pc.p * pc.m;
               vec4 ca = pm * vec4(a.position.xyz, 1);
               vec4 cb = pm * vec4(b.position.xyz, 1);
               const float nearW = 1e-4;
-              if (ca.w < nearW && cb.w < nearW) { collapse(); return; }
+              if (ca.w < nearW && cb.w < nearW) {
+                  collapse();
+                  return;
+              }
               if (ca.w < nearW) ca = mix(ca, cb, (nearW - ca.w) / (cb.w - ca.w));
               if (cb.w < nearW) cb = mix(cb, ca, (nearW - cb.w) / (ca.w - cb.w));
 
@@ -236,7 +246,7 @@ operations:
           // segment unless i + 1 starts a new run, which it says with a negative w.
           struct FLineVertex {
               vec4 position; // xyz: world position; w: thickness in pixels, negated on a run's first vertex
-              vec4 color;    // straight-alpha RGBA, 0..1
+              vec4 color; // straight-alpha RGBA, 0..1
           };
 
           layout(std430, buffer_reference, buffer_reference_align = 16) readonly buffer FLineVertices {
@@ -245,12 +255,12 @@ operations:
 
           // The fragment shader declares the same block: it reads the neighbouring segments too.
           layout(push_constant) uniform StrokePC {
-              mat4 p;                // projection
-              mat4 m;                // model-view
+              mat4 p; // projection
+              mat4 m; // model-view
               FLineVertices vertices;
-              uint count;            // vertices in the layer
-              vec2 viewport;         // framebuffer size, pixels
-              float widthScale;      // multiplies every thickness
+              uint count; // vertices in the layer
+              vec2 viewport; // framebuffer size, pixels
+              float widthScale; // multiplies every thickness
           } pc;
 
           layout(location = 0) out vec4 color;
@@ -271,17 +281,27 @@ operations:
           void main() {
               uint s = uint(gl_VertexIndex) / 6u;
               vec2 corner = corners[gl_VertexIndex % 6];
-              if (s + 1u >= pc.count) { collapse(); return; }
+              if (s + 1u >= pc.count) {
+                  collapse();
+                  return;
+              }
 
               FLineVertex a = pc.vertices.v[s];
               FLineVertex b = pc.vertices.v[s + 1u];
-              if (b.position.w < 0.0) { collapse(); return; } // b begins the next run
+              // b begins the next run.
+              if (b.position.w < 0.0) {
+                  collapse();
+                  return;
+              }
 
               mat4 pm = pc.p * pc.m;
               vec4 ca = pm * vec4(a.position.xyz, 1);
               vec4 cb = pm * vec4(b.position.xyz, 1);
               const float nearW = 1e-4;
-              if (ca.w < nearW && cb.w < nearW) { collapse(); return; }
+              if (ca.w < nearW && cb.w < nearW) {
+                  collapse();
+                  return;
+              }
               if (ca.w < nearW) ca = mix(ca, cb, (nearW - ca.w) / (cb.w - ca.w));
               if (cb.w < nearW) cb = mix(cb, ca, (nearW - cb.w) / (ca.w - cb.w));
 
@@ -333,7 +353,7 @@ operations:
 
           struct FLineVertex {
               vec4 position; // xyz: world position; w: thickness in pixels, negated on a run's first vertex
-              vec4 color;    // straight-alpha RGBA, 0..1
+              vec4 color; // straight-alpha RGBA, 0..1
           };
 
           layout(std430, buffer_reference, buffer_reference_align = 16) readonly buffer FLineVertices {
@@ -445,14 +465,19 @@ operations:
       properties:
         code: |
           // Six translucent strokes, 6 to 56 pixels thick: a cubic, then two sharp corners.
-          val lines = (0 until 6).map { i ->
-              val y = 40.0 + i * 52
-              FLine().moveTo(40, y).cubicTo(vec(180, y - 70, 0), vec(250, y + 90, 0), vec(400, y, 0))
-                  .lineTo(540, y + 20).lineTo(470, y - 10).apply {
-                      thickness = 6.0 + i * 10
-                      color = vec(1.0, 0.7, 0.3, 0.5)
-                  }
-          }
+          val lines =
+              (0 until 6).map { i ->
+                  val y = 40.0 + i * 52
+                  FLine()
+                      .moveTo(40, y)
+                      .cubicTo(vec(180, y - 70, 0), vec(250, y + 90, 0), vec(400, y, 0))
+                      .lineTo(540, y + 20)
+                      .lineTo(470, y - 10)
+                      .apply {
+                          thickness = 6.0 + i * 10
+                          color = vec(1.0, 0.7, 0.3, 0.5)
+                      }
+              }
           loop {
               flineLayers.lines.clear()
               flineLayers.lines += lines
