@@ -421,7 +421,7 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 - [audio](examples.md#trackingresonatorresynthesisexample-kt)
 - [brief](examples.md#briefeditorextensionworkout-kt)
 - [ceres](examples.md#ceresarchitecturaldslsmoke-kt)
-- [chain](examples.md#phototosolidchain-kt)
+- [chain](examples.md#kirigamisolidchain-kt)
 - [datalog](examples.md#datalogeditorextensionworkout-kt)
 - [faust](examples.md#faustboxexamples-kt)
 - <span class="reference-internal">[forth](examples.md#forthinterpretersmoketest-kt)</span>
@@ -688,18 +688,18 @@ To see it all at once, open the [map of the docs](../docs_map.md): every page, a
 
 ## Reference pages
 
-**44474 public symbols across 1959 source files**, 26684 of them (59%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**44510 public symbols across 1961 source files**, 26719 of them (60%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Examples](examples.md) | 243 | 767 | 335 (43%) | Runnable examples, galleries and verification programs. |
+| [Examples](examples.md) | 244 | 783 | 350 (44%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 27 | 260 | 100 (38%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 216 | 208 (96%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 22 | 539 | 323 (59%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 195 | 194 (99%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
-| [Math](math.md) | 62 | 2720 | 2080 (76%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
+| [Math](math.md) | 63 | 2740 | 2100 (76%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 30 | 1378 | 641 (46%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 474 | 11331 | 7185 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 49 | 930 | 534 (57%) | Turning a scene into pixels on a Vulkan device. |
@@ -1544,6 +1544,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [KeyframeSweepDemo.kt](examples.md#keyframesweepdemo-kt) | Examples | 6 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>keyframes/<wbr></small> [keyframeTidy.kt](graphics.md#keyframetidy-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>keyframes/<wbr></small> [keyframeTypeLibrary.kt](graphics.md#keyframetypelibrary-kt) | Graphics | 10 | 9 | The key types every keyframe editor offers beyond its five built-in ones: the easing family, splines that look past the segment to the keys either side, shapes, and shaped noise. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>conformal/<wbr></small> [KirigamiInverseDesign.kt](math.md#kirigamiinversedesign-kt) | Math | 20 | 20 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>chain/<wbr></small> [KirigamiSolidChain.kt](examples.md#kirigamisolidchain-kt) | Examples | 16 | 15 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitDedicatedHost.kt](workspace.md#kitdedicatedhost-kt) | Workspace | 5 | 3 | The compatibility route for a project that already has its own launcher, workspace and document conventions and wants to appear in Welcome's kit library without adopting Field's. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitFirstOpen.kt](workspace.md#kitfirstopen-kt) | Workspace | 3 | 3 | A document copied from a kit's starting point runs its roles, in the kit's launch order, the first time it opens, so it does something without `field_kit.py activate`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitInstances.kt](workspace.md#kitinstances-kt) | Workspace | 25 | 25 | A document copied from a kit's starting point, the record of what it received, and the three-way comparison that updates it. |  |
