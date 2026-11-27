@@ -60,7 +60,7 @@ class DocsAudioProvenanceGuardTest {
 
         val byOrigin: Map<Origin?, Int> = published.groupingBy { DocsAudioProvenance.originOf(it) }.eachCount()
         val expected: Map<Origin?, Int> = mapOf(
-            Origin.STAND_IN_SYNTH to 28,
+            Origin.STAND_IN_SYNTH to 29,
             Origin.DIRT_SAMPLES to 41,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
             Origin.DOUGH_DSP to 39,
@@ -359,7 +359,11 @@ class DocsAudioProvenanceGuardTest {
          * `steam_audio_scene.md` added two (2026-11-22, counted 2026-11-25 when this guard caught them),
          * [Origin.STEAM_AUDIO_DIRECT]: `SteamAudioScreenStudy` renders one pinned hi-hat with a wooden
          * screen clear of, and across, the direct path.
+         *
+         * `chain_drawn_score.md`'s playheads section added one (counted 2026-11-27 when this guard caught
+         * it), [Origin.STAND_IN_SYNTH]: [StrokePlayheadsDocs] plays the notes of playheads run along three
+         * drawn strokes through [patTimed] and [patRenderStereo].
          */
-        const val EXPECTED_FENCE_COUNT = 168
+        const val EXPECTED_FENCE_COUNT = 169
     }
 }

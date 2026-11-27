@@ -635,6 +635,7 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/audio/synth/PatSynthDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/audio/synth/DrawnScoreDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/audio/synth/DrawnMorphDocs.kt" to "pat-stand-in",
+                "src/jvmMain/kotlin/afield/audio/synth/StrokePlayheadsDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/audio/synth/OrcaSoundDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/data/query/datalog/DatalogRhythmSoundDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/audio/synth/DoughDspSoundDocs.kt" to "signal-graph",

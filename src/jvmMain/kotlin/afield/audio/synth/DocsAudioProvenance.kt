@@ -178,6 +178,9 @@ object DocsAudioProvenance {
         // patRenderStereo on notes whose pitch is the size of a point cloud morphing between two
         // strokes read from the drawing, paired by matchPoints. See chain_drawn_morph.md.
         "afield.audio.synth.DrawnMorphDocs" to Origin.STAND_IN_SYNTH,
+        // patRenderStereo on the notes of playheads run along three strokes read from the drawing,
+        // meeting at crossings (StrokePlayheads). See chain_drawn_score.md#playheads-along-strokes.
+        "afield.audio.synth.StrokePlayheadsDocs" to Origin.STAND_IN_SYNTH,
         "afield.audio.synth.DoughDspSoundDocs" to Origin.DOUGH_DSP,
         // speak(...) on tiny-voca; see Origin.NEURAL_SPEECH. spectral_examples.md's speech section.
         "afield.audio.synth.SpeechSoundDocs" to Origin.NEURAL_SPEECH,

@@ -1,3 +1,6 @@
+// `outgoing.isClosedForSend` is only read, to drop heads whose socket has gone (as in RemoteJS.kt).
+@file:OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
+
 package afield.lang.remotejs
 
 import afield.app.server.globalLoopbackHttpPort

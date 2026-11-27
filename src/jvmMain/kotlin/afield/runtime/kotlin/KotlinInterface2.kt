@@ -584,7 +584,7 @@ class KotlinInterface2(
         LatencySpans.record("kotlin.compile", compileStart, compileStart + ns, box = (associatedBox as? Box)?.id, detail = "$snippetKind length=${s.length}")
         lprintln("info,kotlin,compile", "compile=${formatMillis(ns)}")
         if (r is ResultWithDiagnostics.Success) {
-            syntaxErrorDiagnostic(s)?.let { r = ResultWithDiagnostics.Failure(listOf(it) + r!!.reports) }
+            syntaxErrorDiagnostic(s)?.let { r = ResultWithDiagnostics.Failure(listOf(it) + r.reports) }
         }
         if (r is ResultWithDiagnostics.Failure) {
             context.debugScripts.discard(snapshot)
