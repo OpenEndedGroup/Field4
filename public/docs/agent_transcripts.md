@@ -586,6 +586,8 @@ and plots the wave's heard transposition against the meetings. Redraw a stroke w
 its name, and run the boxes after `strokes` again. See
 [Playheads along strokes](chain_drawn_score.md#playheads-along-strokes).
 
+![Three crossing strokes, a blue wave, an orange rise and a green arc, with orange circles where two playheads met, beside a list of eight meetings by beat](assets/chain_drawn_score/playheads.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/stroke_playheads/metadata.edn)
 
 ### chain_tracked_body
