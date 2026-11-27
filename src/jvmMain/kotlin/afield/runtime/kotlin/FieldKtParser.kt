@@ -104,6 +104,26 @@ object FieldKtParser {
         return ktFile
     }
 
+    /** A syntax error in box code: the parser's message and where it starts, both 1-based. */
+    data class SyntaxError(val message: String, val line: Int, val column: Int)
+
+    /**
+     * The first syntax error in [code], or null when it parses cleanly.
+     *
+     * The K2 REPL compiler reports a snippet as compiled even when its parse tree holds error
+     * elements, as long as what the parser recovered still type-checks: `mapOf("a" to [1, 2),
+     * "b" to [3])` closes the literal at `)` and the parser quietly drops `"b" to [3]`.
+     * `KotlinInterface2` asks this after every successful compile and turns such a snippet into a
+     * failure.
+     */
+    fun firstSyntaxError(code: String): SyntaxError? {
+        val virtualFile = LightVirtualFile("temp.kts", KotlinFileType.INSTANCE, code)
+        val ktFile = PsiManager.getInstance(env.project).findFile(virtualFile) as KtFile
+        val error = ktFile.collectDescendantsOfType<PsiErrorElement>().minByOrNull { it.startOffset } ?: return null
+        val lc = StringUtil.offsetToLineColumn(code, error.startOffset)
+        return SyntaxError(error.errorDescription, lc.line + 1, lc.column + 1)
+    }
+
     private fun throwParseError(fileContents: String, error: PsiErrorElement): Nothing {
         throw ParseError(
             error.errorDescription,
