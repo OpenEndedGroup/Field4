@@ -47,7 +47,7 @@ operations:
       properties:
         code: |
           // The notes as a pattern: a piano roll per track, and all three in an audio player.
-          val run = StrokePlayheadsDocs.run(StrokePlayheadsDocs.readStrokes(this))
+          val run = StrokePlayheadsDocs.run(StrokePlayheadsDocs.readStrokes(thisBox))
           val timed = run.timedNotes()
           val rolls = ["wave", "rise", "arc"].map { name ->
               name to patTimed(run.notes.filter { it.track == name }.map { TimedNote(it.start, it.end, it.note, it.gain) }, beats = 32.0)
@@ -62,7 +62,7 @@ operations:
       properties:
         code: |
           // Each track rendered alone, its onsets and pitches found; the wave's heard transposition.
-          val run = StrokePlayheadsDocs.run(StrokePlayheadsDocs.readStrokes(this))
+          val run = StrokePlayheadsDocs.run(StrokePlayheadsDocs.readStrokes(thisBox))
           val heard = StrokePlayheadsDocs.listen(run)
           val shift = StrokePlayheadsDocs.heardTranspositions(run, heard.first { it.track == "wave" })
           showSignals(

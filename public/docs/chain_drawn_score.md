@@ -298,7 +298,7 @@ score above. The piano roll shows the three tracks, and the yellow lines are the
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_drawn_score/playheads-roll.png" wait="3" capture="box" open-outputs="true" w="1180" h="460" padding="18" timeout="90" name="chain-drawn-score-playheads-roll" embed=true alt="Three piano rolls over 32 beats, one per track: the wave's steps jumping up a fourth at each meeting, the rising line's steps closing up and opening out as its rate changes, and the arc's paired ratchet strikes"}
 notation { threeStrokes() }
-val run = StrokePlayheadsDocs.run(StrokePlayheadsDocs.readStrokes(this))
+val run = StrokePlayheadsDocs.run(StrokePlayheadsDocs.readStrokes(thisBox))
 val rolls = ["wave", "rise", "arc"].map { name ->
     name to patTimed(run.notes.filter { it.track == name }.map { TimedNote(it.start, it.end, it.note, it.gain) }, beats = 32.0)
 }
@@ -318,7 +318,7 @@ transposition the audio actually played. That trace changes only at the yellow m
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_drawn_score/playheads-heard.png" wait="8" capture="box" open-outputs="true" w="1180" h="300" padding="18" timeout="120" name="chain-drawn-score-playheads-heard" embed=true alt="A step trace of the wave's heard transposition in semitones against beats, which changes only at the yellow vertical lines marking meetings, above a table of onsets and pitches found for each track"}
 notation { threeStrokes() }
-val run = StrokePlayheadsDocs.run(StrokePlayheadsDocs.readStrokes(this))
+val run = StrokePlayheadsDocs.run(StrokePlayheadsDocs.readStrokes(thisBox))
 val heard = StrokePlayheadsDocs.listen(run)
 val wave = heard.first { it.track == "wave" }
 val shift = StrokePlayheadsDocs.heardTranspositions(run, wave)
