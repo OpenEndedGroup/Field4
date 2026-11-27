@@ -142,6 +142,8 @@ const watchers = new Map(); // Session -> Set<webContents> told about its cookie
 // Answers a `profile` request from a Field page: [request.directory] names a profile ("" is the
 // shared session Field's own pages use), [request.action] what to do with its cookies.
 async function handleProfileRequest(request, sender, { session, log = () => {}, onNewSession = () => {} }) {
+  // Where this Field tab's web() downloads go (web-downloads.cjs).
+  if (request?.action === "downloads-dir") return require("./web-downloads.cjs").setFolder(sender, String(request.params?.folder || ""));
   // User scripts and styles share this channel; they belong to no one profile (user-scripts.cjs).
   if (String(request?.action || "").startsWith("userscript-")) {
     const scripts = require("./user-scripts.cjs");
