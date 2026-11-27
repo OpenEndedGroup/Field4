@@ -1,25 +1,32 @@
 import afield.examples.chain.KirigamiSolidChain
 import afield.geometry.conformal.KirigamiInverseDesign
 
-watchdog = 300 // the solve takes about half a minute the first time; then it is cached
-val design = cached("kirigami-circle-8") { KirigamiInverseDesign(n = 8).solve() }
-println("design residual %.1e after %d iterations".format(design.residual, design.iterations))
+val n = 8
+val narrowGap = 0.01
+val wideGap = 0.04
+watchdog = 300 // The first inverse solve takes about half a minute.
+val design = cached("kirigami-circle-$n") { KirigamiInverseDesign(n = n).solve() }
 
-// Tiles here are as small as a third of a unit and as sharp as 0.4 rad, so the slit is narrower.
-fun report(gap: Double): List<String> {
-    val (shut, open) = KirigamiSolidChain.measureDesign(design, gap = gap)
-    return listOf(
-        "gap $gap: closed genus ${shut.genus}, opened genus ${open.genus} (hinges - tiles + 1 = ${shut.predictedGenus})",
-        "  ${shut.parts} part closed, ${open.parts} opened, watertight ${shut.watertight && open.watertight}",
-        "  volume %.4f closed, %.4f opened; opened hull / closed hull %.3f"
-            .format(shut.volume, open.volume, open.hullArea / shut.hullArea),
-    )
-}
-val lines = report(0.01) + report(0.04)
-lines.forEach { println(it) }
-display("numbers", "<pre>${lines.joinToString("\n")}</pre>")
+// Sharp corners retreat further as the gap widens, so a hinge can miss its tile.
+val gaps: List<Double> = [narrowGap, wideGap]
+val measurements = gaps.map { KirigamiSolidChain.measureDesign(design, gap = it) }
+val rows =
+    gaps.zip(measurements).joinToString("\n") { (gap, pair) ->
+        val (closed, opened) = pair
+        "| $gap | ${closed.genus} / ${opened.genus} | ${closed.predictedGenus} | " +
+            "${closed.parts} / ${opened.parts} | ${closed.watertight && opened.watertight} | " +
+            "${closed.volume.f4} / ${opened.volume.f4} | ${(opened.hullArea / closed.hullArea).f3} |"
+    }
+markdown(
+    "numbers",
+    """
+    Design residual ${"%.1e".format(design.residual)} after ${design.iterations} iterations.
 
-val (shut, open) = KirigamiSolidChain.measureDesign(design, gap = 0.01)
+    | Half slit width | Genus (closed / open) | Predicted | Parts (closed / open) | Both watertight | Volume (closed / open) | Hull area ratio |
+    | --- | --- | --- | --- | --- | --- | --- |""".trimIndent() + "\n" + rows,
+)
+
+val (shut, open) = measurements.first()
 fun view(m: KirigamiSolidChain.Measured) = imgFromBytes(
     m.mesh.renderPng(MeshView(yawDegrees = 25.0, pitchDegrees = 40.0, distance = 2.7, width = 620, height = 520)),
 )

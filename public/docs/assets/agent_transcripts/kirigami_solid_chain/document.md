@@ -11,16 +11,17 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="kirigami_deployed" index="0" -->
 
 ```edn [field-box id="kirigami_deployed" role="properties"]
-{"id" "kirigami_deployed" "index" 0 "name" "the same solid, opened" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the same solid, opened" "_tombstone" false "frame" #afield/rect [60.0 1600.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kirigami_deployed_code_.kt" "lines" 35 "characters" 1050 "sha256" "24ef0aca55216979bbe8e748c7119bc1ddc222002c57bb62ebc00ae24fec614d"}]}
+{"id" "kirigami_deployed" "index" 0 "name" "the same solid, opened" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the same solid, opened" "_tombstone" false "frame" #afield/rect [60.0 1600.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kirigami_deployed_code_.kt" "lines" 36 "characters" 1071 "sha256" "b8724a65e2337f2bb9cb750719f1007a5c4788bef2c804f64d6fa8de002afdc8"}]}
 ```
 
 ```kotlin [field-property box="kirigami_deployed" name="code" path="kirigami_deployed_code_.kt"]
 import afield.examples.chain.KirigamiSolidChain
-import kotlin.math.cos
-import kotlin.math.sin
 
+val anglesDegrees: List<Double> = [0.0, 15.0, 30.0, 45.0]
 val closed = KirigamiSolidChain.measure(angle = 0.0)
-val stages = listOf(0.0, 15.0, 30.0, 45.0).map { it to KirigamiSolidChain.measure(angle = Math.toRadians(it)) }
+val stages = anglesDegrees.map { degrees ->
+    degrees to KirigamiSolidChain.measure(angle = Math.toRadians(degrees))
+}
 for ((deg, m) in stages) {
     val s = cos(m.angle) + sin(m.angle)
     println(
@@ -57,32 +58,39 @@ showImgGrid(
 <!-- field-box id="kirigami_circle_solid" index="1" -->
 
 ```edn [field-box id="kirigami_circle_solid" role="properties"]
-{"id" "kirigami_circle_solid" "index" 1 "name" "the sheet that opens into a circle, as a solid" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the sheet that opens into a circle, as a solid" "_tombstone" false "frame" #afield/rect [60.0 3200.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kirigami_circle_solid_code_.kt" "lines" 31 "characters" 1512 "sha256" "d91f18f2f889718411813d0375e36a9f48e5b7d7173b1715a8f3c1967b4da526"}]}
+{"id" "kirigami_circle_solid" "index" 1 "name" "the sheet that opens into a circle, as a solid" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the sheet that opens into a circle, as a solid" "_tombstone" false "frame" #afield/rect [60.0 3200.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kirigami_circle_solid_code_.kt" "lines" 38 "characters" 1623 "sha256" "6b989d27ebb8e356ce1729d8ea07e34349755dbad7fea37e8a7f260ced3b7b27"}]}
 ```
 
 ```kotlin [field-property box="kirigami_circle_solid" name="code" path="kirigami_circle_solid_code_.kt"]
 import afield.examples.chain.KirigamiSolidChain
 import afield.geometry.conformal.KirigamiInverseDesign
 
-watchdog = 300 // the solve takes about half a minute the first time; then it is cached
-val design = cached("kirigami-circle-8") { KirigamiInverseDesign(n = 8).solve() }
-println("design residual %.1e after %d iterations".format(design.residual, design.iterations))
+val n = 8
+val narrowGap = 0.01
+val wideGap = 0.04
+watchdog = 300 // The first inverse solve takes about half a minute.
+val design = cached("kirigami-circle-$n") { KirigamiInverseDesign(n = n).solve() }
 
-// Tiles here are as small as a third of a unit and as sharp as 0.4 rad, so the slit is narrower.
-fun report(gap: Double): List<String> {
-    val (shut, open) = KirigamiSolidChain.measureDesign(design, gap = gap)
-    return listOf(
-        "gap $gap: closed genus ${shut.genus}, opened genus ${open.genus} (hinges - tiles + 1 = ${shut.predictedGenus})",
-        "  ${shut.parts} part closed, ${open.parts} opened, watertight ${shut.watertight && open.watertight}",
-        "  volume %.4f closed, %.4f opened; opened hull / closed hull %.3f"
-            .format(shut.volume, open.volume, open.hullArea / shut.hullArea),
-    )
-}
-val lines = report(0.01) + report(0.04)
-lines.forEach { println(it) }
-display("numbers", "<pre>${lines.joinToString("\n")}</pre>")
+// Sharp corners retreat further as the gap widens, so a hinge can miss its tile.
+val gaps: List<Double> = [narrowGap, wideGap]
+val measurements = gaps.map { KirigamiSolidChain.measureDesign(design, gap = it) }
+val rows =
+    gaps.zip(measurements).joinToString("\n") { (gap, pair) ->
+        val (closed, opened) = pair
+        "| $gap | ${closed.genus} / ${opened.genus} | ${closed.predictedGenus} | " +
+            "${closed.parts} / ${opened.parts} | ${closed.watertight && opened.watertight} | " +
+            "${closed.volume.f4} / ${opened.volume.f4} | ${(opened.hullArea / closed.hullArea).f3} |"
+    }
+markdown(
+    "numbers",
+    """
+    Design residual ${"%.1e".format(design.residual)} after ${design.iterations} iterations.
 
-val (shut, open) = KirigamiSolidChain.measureDesign(design, gap = 0.01)
+    | Half slit width | Genus (closed / open) | Predicted | Parts (closed / open) | Both watertight | Volume (closed / open) | Hull area ratio |
+    | --- | --- | --- | --- | --- | --- | --- |""".trimIndent() + "\n" + rows,
+)
+
+val (shut, open) = measurements.first()
 fun view(m: KirigamiSolidChain.Measured) = imgFromBytes(
     m.mesh.renderPng(MeshView(yawDegrees = 25.0, pitchDegrees = 40.0, distance = 2.7, width = 620, height = 520)),
 )
@@ -99,30 +107,29 @@ showImgGrid(
 <!-- field-box id="kirigami_cut_plate" index="2" -->
 
 ```edn [field-box id="kirigami_cut_plate" role="properties"]
-{"id" "kirigami_cut_plate" "index" 2 "name" "the closed sheet, cut with hinges you can make" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the closed sheet, cut with hinges you can make" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kirigami_cut_plate_code_.kt" "lines" 28 "characters" 1015 "sha256" "1da7757af41c4bf1a20fff1c7ae215e0cdbbcdf33de17345bcf33d349f27132b"}]}
+{"id" "kirigami_cut_plate" "index" 2 "name" "the closed sheet, cut with hinges you can make" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the closed sheet, cut with hinges you can make" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kirigami_cut_plate_code_.kt" "lines" 27 "characters" 899 "sha256" "acc050418216473fe713fd4a6327497826dcfa652229e9563b9b4167cbc43fae"}]}
 ```
 
 ```kotlin [field-property box="kirigami_cut_plate" name="code" path="kirigami_cut_plate_code_.kt"]
 import afield.examples.chain.KirigamiSolidChain
 
-// gap: half a slit's width. bridge: how far each hinge bar runs along its cut.
 val n = 8
-val gap = 0.04
-val bridge = 0.12
-val plate = KirigamiSolidChain.measure(n, angle = 0.0, thickness = 0.1, gap = gap, bridge = bridge)
+val thickness = 0.1
+val gap = 0.04 // Half the slit width.
+val bridge = 0.12 // Hinge bar length along the cut.
+val plate = KirigamiSolidChain.measure(n, angle = 0.0, thickness = thickness, gap = gap, bridge = bridge)
 
-val report = listOf(
-    "${plate.tiles} tiles, ${plate.hinges} hinges",
-    "genus ${plate.genus}, and hinges - tiles + 1 = ${plate.predictedGenus}",
-    "${plate.parts} part, watertight=${plate.watertight}",
-    "volume %.6f = area %.6f x thickness 0.1".format(plate.volume, plate.sectionArea),
+markdown(
+    "numbers",
+    """
+    - ${plate.tiles} tiles, ${plate.hinges} hinges
+    - Genus ${plate.genus}, predicted by hinges − tiles + 1 = ${plate.predictedGenus}
+    - Parts: ${plate.parts}, watertight: ${plate.watertight}
+    - Volume ${plate.volume.f6} = area ${plate.sectionArea.f6} × thickness $thickness""".trimIndent(),
 )
-report.forEach { println(it) }
-display("numbers", "<pre>${report.joinToString("\n")}</pre>")
 
-// A three-quarter view from above; the CPU rasteriser needs no Window.
 showImgGrid(
-    "the cut plate, 0.1 thick" to
+    "the cut plate, $thickness thick" to
         imgFromBytes(
             plate.mesh.renderPng(
                 MeshView(yawDegrees = 25.0, pitchDegrees = 40.0, distance = 2.7, width = 900, height = 600),

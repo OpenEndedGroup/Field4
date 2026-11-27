@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-27T10:00:58.237Z",
+  "capturedAt": "2026-11-27T12:05:56.926Z",
   "documentName": "kirigami_solid_chain",
   "outputs": [
     {
@@ -19,8 +19,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 328,
-      "height": 106,
+      "width": 480,
+      "height": 172,
       "path": "outputs/1.html"
     },
     {
@@ -39,8 +39,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 227,
-      "height": 80,
+      "width": 289,
+      "height": 87,
       "path": "outputs/3.html"
     },
     {

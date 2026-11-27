@@ -7,7 +7,9 @@ sheet to `afield.geometry.solid.manifold` as a 2D region, extrudes it into a sol
 the result. The [kirigami_solid_chain](agent_transcripts.md#kirigami_solid_chain) starting point has
 all three boxes.
 
-The construction is in `afield.examples.chain.KirigamiSolidChain`:
+The construction is in [`KirigamiSolidChain`](reference/examples.md#kirigamisolidchain-kt-kirigamisolidchain).
+Its [`measure`](reference/examples.md#kirigamisolidchain-kt--kirigamisolidchain--measure) method
+builds the region, extrudes it and returns the mesh and the readout.
 
 - every unit tile is shrunk about its centre by `gap` on each side, so each cut becomes a slit
   `2 * gap` wide;
@@ -23,7 +25,7 @@ that meet pair left to right when `a + b` is even and top to bottom when it is o
 At an opening angle of zero the region is the pattern you would send to a laser cutter: a square
 plate with its slits, and one bridge at every hinge.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_kirigami_solid/cut_plate.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="all" wait-output-contains="x thickness 0.1" embed=true force=true timeout="300" padding="18" name="chain-kirigami-cut-plate" alt="Four lines reading 64 tiles and 112 hinges, genus 49 against hinges minus tiles plus one equals 49, one watertight part, and volume 5.524480 equal to area 55.244800 times thickness 0.1, above a grey render of the square cut plate seen from above at three-quarters, its slits and hinge bridges visible" macro-file="../../dev_docs/agents/transcripts/kirigami_solid_chain.yaml" capture-box="kirigami_cut_plate"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_kirigami_solid/cut_plate.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="all" wait-output-contains="× thickness 0.1" embed=true force=true timeout="300" padding="18" name="chain-kirigami-cut-plate" alt="Four lines reading 64 tiles and 112 hinges, genus 49 against hinges minus tiles plus one equals 49, one watertight part, and volume 5.524480 equal to area 55.244800 times thickness 0.1, above a grey render of the square cut plate seen from above at three-quarters, its slits and hinge bridges visible" macro-file="../../dev_docs/agents/transcripts/kirigami_solid_chain.yaml" capture-box="kirigami_cut_plate"}
 // Built and launched from dev_docs/agents/transcripts/kirigami_solid_chain.yaml.
 ```
 
@@ -37,8 +39,8 @@ genus = 2n(n − 1) − n² + 1 = (n − 1)²
 ```
 
 which is 49 for this 8 × 8 sheet, one hole for each interior grid node. If Manifold reports a different genus, then
-a bridge is missing or a bar touches a tile it should not. A missing bridge lowers the count and leaves
-more than one part. A stray bar raises it.
+check which tiles the bridge bars connect. Losing a bridge can remove a cycle while leaving the
+plate in one piece. An extra connection between tiles can add a cycle.
 
 ## Opened
 
@@ -63,16 +65,17 @@ they bend.
 ## The sheet that opens into a circle
 
 The [kirigami page](kirigami.md)'s second box solves Choi's inverse problem: which cut pattern of a
-square sheet opens into a circle. That solve is `afield.geometry.conformal.KirigamiInverseDesign`,
-and the page's box calls it. Its tiles are irregular quadrilaterals, but its hinges are the same
-112 cuts, so `KirigamiSolidChain.bridgedSection` takes them unchanged, closed or opened:
+square sheet opens into a circle. The box calls [`KirigamiInverseDesign.solve`](reference/math.md#kirigamiinversedesign-kt--kirigamiinversedesign--solve).
+Its tiles are irregular quadrilaterals, with the same 112 hinges.
+[`KirigamiSolidChain.measureDesign`](reference/examples.md#kirigamisolidchain-kt--kirigamisolidchain--measuredesign)
+builds and measures both solids.
 
 ```diffstatic {data-lang=kotlin}
 val design = KirigamiInverseDesign(n = 8).solve()
 val (closed, opened) = KirigamiSolidChain.measureDesign(design, gap = 0.01)
 ```
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_kirigami_solid/circle.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="all" wait-output-contains="gap 0.04" embed=true force=true timeout="400" padding="18" name="chain-kirigami-circle" alt="Lines of numbers giving, for a slit half-width of 0.01, genus 49 closed and opened against a predicted 49, one watertight part, the two volumes and an opened-to-closed hull ratio of 2.019, then for 0.04 a genus of 47; below, grey renders of the square cut pattern of irregular tiles and of the same solid opened onto a circle, both seen from above at three-quarters" macro-file="../../dev_docs/agents/transcripts/kirigami_solid_chain.yaml" capture-box="kirigami_circle_solid"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_kirigami_solid/circle.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="all" wait-output-contains="Design residual" embed=true force=true timeout="400" padding="18" name="chain-kirigami-circle" alt="A table giving, for a slit half-width of 0.01, genus 49 closed and opened against a predicted 49, one watertight part, the two volumes and an opened-to-closed hull ratio of 2.019, then for 0.04 a genus of 47; below, grey renders of the square cut pattern of irregular tiles and of the same solid opened onto a circle, both seen from above at three-quarters" macro-file="../../dev_docs/agents/transcripts/kirigami_solid_chain.yaml" capture-box="kirigami_circle_solid"}
 // Built and launched from dev_docs/agents/transcripts/kirigami_solid_chain.yaml.
 ```
 
