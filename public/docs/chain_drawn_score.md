@@ -294,7 +294,7 @@ markdown(
 ```
 
 The notes are `TimedNote`s, so they play through `patTimed` and the same detached voice as the
-score above. The piano roll shows the three tracks, and the yellow lines are the meetings:
+score above. The piano roll shows the three tracks: the wave jumping a fourth at each of its meetings, and the rising line's steps closing up and opening out as its rate changes:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_drawn_score/playheads-roll.png" wait="3" capture="box" open-outputs="true" w="1180" h="460" padding="18" timeout="90" name="chain-drawn-score-playheads-roll" embed=true alt="Three piano rolls over 32 beats, one per track: the wave's steps jumping up a fourth at each meeting, the rising line's steps closing up and opening out as its rate changes, and the arc's paired ratchet strikes"}
 notation { threeStrokes() }
